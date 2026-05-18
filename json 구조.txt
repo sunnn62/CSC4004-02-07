@@ -1,0 +1,26 @@
+1. metadatㅁ (전역 메타 데이터)
+"metadata": {
+    "title": "Canon in D",			#곡(악보) 제목
+    "tempo": 100,				#BPM 연주 템포, 메트로놈 기능 혹은 악보 넘어가는 기준
+    "timeSignature": "4/4",		#박자표
+    "keySignature": "D major"		#조표
+  },
+
+2. 마디별 연주 데이터
+"measures": [
+    {
+      "number": 1,				#마디 번호
+      "notes":				#마디 안의 음표, 쉼표 배열
+
+3. note
+{
+          "id": "n2",				#음표 식별자
+          "pitches": [			#음정, 안에 값이 비어있으면 쉼표, 값 자체는 midi 노트 번호로 공통 식별자
+            50
+          ],
+          "duration": 0.5,			#지속 길이
+          "startBeat": 0.0,			#해당 마디 안에서 음표가 등장하는 위치
+          "absoluteStartBeat": 0.0,	#곡 시작 지점을 기준으로 누적된 위치
+          "hand": "left",			#왼손 오른속 악보 구별
+          "isRest": false			#쉼표 구별, 쉼표라면 duration만큼 쉼
+},
