@@ -1,0 +1,207 @@
+import json
+import os
+import shutil
+import uuid
+from typing import List, Optional
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
+app = FastAPI(title="Piano Score API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+UPLOAD_DIR = "./uploads"
+SCORES_DIR = "./scores"
+RESULTS_DIR = "./results"
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(SCORES_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+
+
+class AppError(Exception):
+    def __init__(self, status_code: int, error: str, message: str):
+        self.status_code = status_code
+        self.error = error
+        self.message = message
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request, exc: AppError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.error, "message": exc.message},
+    )
+
+
+class PracticeResult(BaseModel):
+    scoreId: str
+    accuracy: float
+    bpmAvg: float
+    mistakeMeasures: List[int]
+
+
+def _mock_score(score_id: str) -> dict:
+    return {
+        "metadata": {
+            "title": "Mock Piano Score",
+            "tempo": 120,
+            "timeSignature": "4/4",
+            "keySignature": "C",
+        },
+        "measures": [
+            {
+                "number": 1,
+                "notes": [
+                    {
+                        "id": f"{score_id}-1-1",
+                        "pitch": 60,
+                        "duration": 1.0,
+                        "startBeat": 0.0,
+                        "hand": "right",
+                        "isChord": False,
+                        "chordNotes": None,
+                        "isRest": False,
+                        "accidental": None,
+                    },
+                    {
+                        "id": f"{score_id}-1-2",
+                        "pitch": 62,
+                        "duration": 1.0,
+                        "startBeat": 1.0,
+                        "hand": "right",
+                        "isChord": False,
+                        "chordNotes": None,
+                        "isRest": False,
+                        "accidental": None,
+                    },
+                    {
+                        "id": f"{score_id}-1-3",
+                        "pitch": 64,
+                        "duration": 1.0,
+                        "startBeat": 2.0,
+                        "hand": "right",
+                        "isChord": False,
+                        "chordNotes": None,
+                        "isRest": False,
+                        "accidental": None,
+                    },
+                    {
+                        "id": f"{score_id}-1-4",
+                        "pitch": 65,
+                        "duration": 1.0,
+                        "startBeat": 3.0,
+                        "hand": "right",
+                        "isChord": False,
+                        "chordNotes": None,
+                        "isRest": False,
+                        "accidental": None,
+                    },
+                ],
+            },
+            {
+                "number": 2,
+                "notes": [
+                    {
+                        "id": f"{score_id}-2-1",
+                        "pitch": 48,
+                        "duration": 2.0,
+                        "startBeat": 0.0,
+                        "hand": "left",
+                        "isChord": True,
+                        "chordNotes": [48, 52, 55],
+                        "isRest": False,
+                        "accidental": None,
+                    },
+                    {
+                        "id": f"{score_id}-2-2",
+                        "pitch": 0,
+                        "duration": 2.0,
+                        "startBeat": 2.0,
+                        "hand": "left",
+                        "isChord": False,
+                        "chordNotes": None,
+                        "isRest": True,
+                        "accidental": None,
+                    },
+                ],
+            },
+        ],
+    }
+
+
+def _get_status_path(score_id: str) -> str:
+    return os.path.join(SCORES_DIR, f"{score_id}_status.json")
+
+
+def _assert_score_exists(score_id: str):
+    if not os.path.exists(_get_status_path(score_id)):
+        raise AppError(404, "NOT_FOUND", "해당 scoreId를 찾을 수 없습니다")
+
+
+# ---------------------------------------------------------------------------
+# POST /api/upload
+# ---------------------------------------------------------------------------
+@app.post("/api/upload")
+async def upload_score(file: UploadFile = File(...)):
+    # TODO: oemer 연동 후 파일을 파싱 큐에 넣고 비동기 처리로 교체
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise AppError(400, "INVALID_FILE", "PDF나 이미지만 지원합니다")
+
+    score_id = str(uuid.uuid4())
+
+    file_path = os.path.join(UPLOAD_DIR, f"{score_id}.{ext}")
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
+        # TODO: oemer 처리 완료 시 status를 "done" 또는 "failed"로 업데이트
+        json.dump({"status": "processing"}, f)
+
+    return {"scoreId": score_id}
+
+
+# ---------------------------------------------------------------------------
+# GET /api/score/{scoreId}/status
+# ---------------------------------------------------------------------------
+@app.get("/api/score/{score_id}/status")
+async def get_score_status(score_id: str):
+    # TODO: oemer 처리 완료 여부를 폴링하거나 콜백으로 상태 갱신
+    _assert_score_exists(score_id)
+    with open(_get_status_path(score_id), encoding="utf-8") as f:
+        return json.load(f)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/score/{scoreId}
+# ---------------------------------------------------------------------------
+@app.get("/api/score/{score_id}")
+async def get_score(score_id: str):
+    # TODO: oemer 파싱 결과 JSON을 scores/{scoreId}_data.json에서 읽어 반환
+    _assert_score_exists(score_id)
+    return _mock_score(score_id)
+
+
+# ---------------------------------------------------------------------------
+# POST /api/result
+# ---------------------------------------------------------------------------
+@app.post("/api/result")
+async def save_result(result: PracticeResult):
+    # TODO: 누적 통계 집계 및 피드백 생성 로직 추가
+    _assert_score_exists(result.scoreId)
+    result_path = os.path.join(RESULTS_DIR, f"{result.scoreId}_result.json")
+    with open(result_path, "w", encoding="utf-8") as f:
+        json.dump(result.model_dump(), f, ensure_ascii=False)
+    return {"message": "저장 완료"}
