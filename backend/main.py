@@ -161,6 +161,10 @@ def _get_status_path(score_id: str) -> str:
     return os.path.join(SCORES_DIR, f"{score_id}_status.json")
 
 
+def _get_data_path(score_id: str) -> str:
+    return os.path.join(SCORES_DIR, f"{score_id}_data.json")
+
+
 def _assert_score_exists(score_id: str):
     if not os.path.exists(_get_status_path(score_id)):
         raise AppError(404, "NOT_FOUND", "해당 scoreId를 찾을 수 없습니다")
@@ -194,8 +198,9 @@ async def upload_score(file: UploadFile = File(...)):
 # ---------------------------------------------------------------------------
 @app.get("/api/score/{score_id}/status")
 async def get_score_status(score_id: str):
-    # TODO: oemer 처리 완료 여부를 폴링하거나 콜백으로 상태 갱신
     _assert_score_exists(score_id)
+    if os.path.exists(_get_data_path(score_id)):
+        return {"status": "done"}
     with open(_get_status_path(score_id), encoding="utf-8") as f:
         return json.load(f)
 
@@ -205,9 +210,12 @@ async def get_score_status(score_id: str):
 # ---------------------------------------------------------------------------
 @app.get("/api/score/{score_id}")
 async def get_score(score_id: str):
-    # TODO: oemer 파싱 결과 JSON을 scores/{scoreId}_data.json에서 읽어 반환
     _assert_score_exists(score_id)
-    return _mock_score(score_id)
+    data_path = _get_data_path(score_id)
+    if not os.path.exists(data_path):
+        raise AppError(425, "NOT_READY", "아직 처리 중입니다")
+    with open(data_path, encoding="utf-8") as f:
+        return json.load(f)
 
 
 # ---------------------------------------------------------------------------
