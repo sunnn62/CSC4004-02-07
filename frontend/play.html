@@ -8,13 +8,17 @@
 <body>
   <h1>연주 화면</h1>
 
-  <!-- 여기에 OSMD가 악보를 그릴 거임 -->
+  <div id="controls">
+    <button id="btn-reset">⏮ 처음으로</button>
+    <button id="btn-prev">◀ 이전</button>
+    <button id="btn-next">▶ 다음</button>
+  </div>
+
+  <div id="note-info">악보 불러오는 중...</div>
+
   <div id="osmd-container"></div>
 
-  <!-- OSMD 라이브러리 (CDN으로 불러옴) -->
   <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
-
-  <!-- 우리 코드 -->
   <script src="js/osmd-render.js"></script>
 </body>
 </html>
