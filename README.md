@@ -232,14 +232,38 @@ data = parse_score_file(
 }
 ```
 
-### 팀원 필독: shouldPlay · onsetId
+### develop 스키마 대비 추가 필드
 
-| 필드 | 의미 |
-|------|------|
-| `shouldPlay: false` | 쉼표이거나 타이로 이어지는 뒤쪽 음표 → MIDI 비교 시 **이 음표는 건너뜁니다** |
-| `onsetId` | 같은 시점에 눌러야 하는 음들의 공통 ID (화음, 양손 동시 타건 포함) |
+이전 `develop` 브랜치에 있던 스키마를 포함하면서, 비교에 유용한 필드 7개를 추가로 생성합니다. 기존 필드는 그대로이므로 호환성 문제는 없습니다.
 
-MIDI 비교 파트에서는 **같은 `onsetId` 를 가진 음표 전체를 하나의 타건 묶음**으로 처리해 주세요.
+| # | 추가 필드 | 위치 | 타입 | 용도 |
+|---|----------|------|------|------|
+| 1 | `tempoMap` | 최상위 | `array` | 곡 전체의 BPM 변화 지점 모음. 프론트엔드 타이머가 가속·감속할 때 사용 |
+| 2 | `metadata.totalBeats` | metadata | `float` | 곡 전체 총 박자 수. 진행률(progress bar) 계산용 |
+| 3 | `metadata.estimatedDurationSec` | metadata | `float` | 추정 재생 시간(초). 곡 소요 시간 표시용 |
+| 4 | `measure.startBeat` / `endBeat` | measure | `float` | 마디 시작·끝 박자(절대값). 마디 단위 시간 분석에 사용 |
+| 5 | `note.pitchNames` | note | `string[]` | MIDI 번호를 사람이 읽는 이름으로 (`60` → `"C4"`). 결과 화면 표시용 |
+| 6 | `note.absoluteEndBeat` | note | `float` | `absoluteStartBeat + duration`. 박자 판정 윈도우 계산용 |
+| 7 | **`note.shouldPlay`** | note | `bool` | 실제로 타건해야 하는 음표인지 여부 |
+| 8 | **`note.onsetId`** | note | `string\|null` | 동시 타건 묶음 식별자 (화음·양손 동시) |
+
+### ⚠️ MIDI 비교 파트 필독
+
+#### `shouldPlay`
+쉼표 또는 타이(`continue`/`stop`)로 이어지는 뒤쪽 음표는 자동으로 `false` 입니다.
+**`shouldPlay: false` 인 음표는 MIDI 비교에서 건너뛰어 주세요.** 직접 `isRest` 와 `tie` 를 검사하지 않아도 됩니다.
+
+#### `onsetId`
+같은 시점에 눌러야 하는 음들(화음, 양손 동시 타건 포함)에는 동일한 `onsetId` 가 부여됩니다.
+**같은 `onsetId` 의 음표 전체를 하나의 타건 묶음**으로 처리하면 화음 비교가 정상 동작합니다.
+
+```json
+// 예: 오른손 C major 화음 + 왼손 C2 동시 타건
+{ "id": "n10", "pitches": [60], "onsetId": "m4_b0_right", "hand": "right" }
+{ "id": "n11", "pitches": [64], "onsetId": "m4_b0_right", "hand": "right" }
+{ "id": "n12", "pitches": [67], "onsetId": "m4_b0_right", "hand": "right" }
+{ "id": "n13", "pitches": [36], "onsetId": "m4_b0_left",  "hand": "left"  }
+```
 
 ---
 
