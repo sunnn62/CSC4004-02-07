@@ -1,0 +1,35 @@
+# 자동 생성 중간 파일
+score_work/
+service_data/
+processed_pages/
+
+# Poppler 바이너리 (용량이 크므로 직접 다운로드)
+poppler/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+*.egg-info/
+
+# 악보 이미지·PDF (저작권 + 용량)
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# 생성된 JSON 출력물
+output.json
+output*.json
+test_*.json
+*_checked.json
+
+# 개발 과정 초안 코드 (필요하면 제거)
+gemini 코드/
+
+# IDE
+.vscode/
+.idea/
