@@ -327,8 +327,9 @@ data = parse_score_file(
 sheet_parser/
 ├── score_pipeline.py        # 메인 파이프라인 (파싱 핵심 로직)
 ├── score_api.py             # FastAPI 서버 (비동기 작업 큐)
-├── requirements.txt
-├── .gitignore
+├── requirements.txt         # Python 의존성 목록 (아래 설명)
+├── .gitignore               # git 추적 제외 규칙 (아래 설명)
+├── README.md                # 이 문서
 ├── poppler/                 # Poppler 바이너리 (git 제외 — 직접 다운로드)
 │   └── poppler-26.02.0/Library/bin/
 ├── service_data/            # 자동 생성 (git 제외)
@@ -341,3 +342,41 @@ sheet_parser/
     ├── musicxml/            # Oemer 출력 MusicXML
     └── cache/               # 결과 캐시 (SHA-256 기반)
 ```
+
+### `requirements.txt` 란?
+
+이 모듈을 실행하는 데 필요한 **Python 패키지 목록**입니다. 한 줄에 하나씩 라이브러리 이름과 최소 버전을 적어둡니다.
+새 환경에서 아래 명령 한 줄로 모든 의존성을 한꺼번에 설치할 수 있게 해 줍니다.
+
+```bash
+pip install -r requirements.txt
+```
+
+현재 포함된 패키지:
+
+| 패키지 | 용도 |
+|--------|------|
+| `fastapi` | REST API 서버 프레임워크 (`score_api.py`) |
+| `uvicorn[standard]` | FastAPI 앱을 실제로 띄우는 ASGI 서버 |
+| `python-multipart` | `/scores` 의 `multipart/form-data` 업로드 처리 |
+| `music21` | MusicXML 파싱 라이브러리 — 파이프라인의 핵심 |
+| `pdf2image` | PDF → PNG 변환 (Poppler를 호출) |
+| `Pillow` | 이미지 전처리 (흑백화·대비·크롭) |
+| `oemer` | 오픈소스 딥러닝 OMR (이미지 → MusicXML) |
+| `onnxruntime` | Oemer 모델 추론 엔진. GPU 가속 시 `onnxruntime-gpu` 로 교체 |
+
+### `.gitignore` 란?
+
+git이 **추적하지 않을 파일·폴더 패턴**을 정의하는 파일입니다. 빌드 산출물, 캐시, 대용량/민감 파일이 실수로 GitHub에 올라가지 않도록 막아줍니다.
+
+현재 제외 대상:
+
+| 패턴 | 이유 |
+|------|------|
+| `score_work/`, `service_data/`, `processed_pages/` | 파이프라인이 자동 생성하는 중간 산출물 (캐시·PNG·MusicXML·결과 JSON) |
+| `poppler/` | Poppler 바이너리. 수십 MB라서 직접 다운로드하도록 안내 |
+| `__pycache__/`, `*.pyc/pyo/pyd`, `.venv/`, `venv/`, `*.egg-info/` | Python 캐시·가상환경·빌드 산출물 |
+| `*.pdf`, `*.png`, `*.jpg`, `*.jpeg` | 악보 이미지/PDF — **저작권 이슈 + 용량** |
+| `output.json`, `output*.json`, `test_*.json`, `*_checked.json` | 로컬 테스트로 만든 결과물 |
+| `gemini 코드/` | 개발 과정의 초안 코드 |
+| `.vscode/`, `.idea/` | IDE 개인 설정 |
