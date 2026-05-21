@@ -3,35 +3,35 @@ const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
   drawTitle: true,
 });
 
-// 모든 음표를 한 줄로 펼친 배열. 인덱스로 접근하려고.
-let allNotes = [];
-// 직전에 "친" 음표 인덱스 (시뮬레이션용)
+let graphicalNotes = [];    // SVG 접근 가능한 음표 배열
 let lastPlayedIndex = -1;
 
 async function init() {
   try {
     await osmd.load("assets/sample.musicxml");
-    osmd.render();
+    osmd.render();              // 처음 한 번만 호출
     osmd.cursor.show();
 
-    collectAllNotes();
+    collectGraphicalNotes();
     updateNoteInfo();
-    console.log(`✅ 렌더링 완료. 총 ${allNotes.length}개 음표 수집됨`);
+    console.log(`✅ 렌더링 완료. 음표 ${graphicalNotes.length}개 수집`);
+    console.log("첫 그래픽 음표:", graphicalNotes[0]);
   } catch (err) {
     console.error("❌ 악보 로딩 실패:", err);
   }
 }
 
-// MusicXML 구조를 따라 들어가서 모든 Note 객체를 평탄화 수집
-function collectAllNotes() {
-  allNotes = [];
-  for (const measure of osmd.Sheet.SourceMeasures) {
-    for (const container of measure.VerticalSourceStaffEntryContainers) {
-      for (const staffEntry of container.StaffEntries) {
+// OSMD가 그린 그래픽 트리를 순회해서 GraphicalNote들을 평탄화 수집
+function collectGraphicalNotes() {
+  graphicalNotes = [];
+  for (const measureRow of osmd.GraphicSheet.MeasureList) {
+    for (const gMeasure of measureRow) {
+      if (!gMeasure) continue;
+      for (const staffEntry of gMeasure.staffEntries) {
         if (!staffEntry) continue;
-        for (const voiceEntry of staffEntry.VoiceEntries) {
-          for (const note of voiceEntry.Notes) {
-            allNotes.push(note);
+        for (const gVoiceEntry of staffEntry.graphicalVoiceEntries) {
+          for (const gNote of gVoiceEntry.notes) {
+            graphicalNotes.push(gNote);
           }
         }
       }
@@ -39,13 +39,31 @@ function collectAllNotes() {
   }
 }
 
-// 핵심 함수: index번째 음표를 color로 색칠
-// 나중에 comparator가 호출할 인터페이스
+// ⭐ 핵심: 재렌더링 없이 SVG 직접 변경
 function colorNoteAt(index, color) {
-  if (index < 0 || index >= allNotes.length) return;
-  allNotes[index].NoteheadColor = color;
-  osmd.render();          // 다시 그려야 색 반영
-  osmd.cursor.show();     // 재렌더링 후 커서 다시 띄우기
+  if (index < 0 || index >= graphicalNotes.length) return;
+  const svgEl = graphicalNotes[index].getSVGGElement?.();
+  if (!svgEl) {
+    console.warn(`음표 ${index}: SVG 없음`);
+    return;
+  }
+  // 음표 그룹 안의 모든 path 색 변경 (notehead, stem 포함)
+  svgEl.querySelectorAll('path').forEach(p => {
+    p.setAttribute('fill', color);
+    p.setAttribute('stroke', color);
+  });
+}
+
+// 전체 색 초기화 (검정으로 복귀)
+function resetAllColors() {
+  for (const gNote of graphicalNotes) {
+    const svgEl = gNote.getSVGGElement?.();
+    if (!svgEl) continue;
+    svgEl.querySelectorAll('path').forEach(p => {
+      p.setAttribute('fill', '#000000');
+      p.setAttribute('stroke', '#000000');
+    });
+  }
 }
 
 function updateNoteInfo() {
@@ -62,26 +80,22 @@ function updateNoteInfo() {
   info.innerHTML = `<strong>현재 음표:</strong> ${descriptions.join(", ")}`;
 }
 
-// "다음" = 현재 음표를 정답으로 처리하고 다음으로 이동
+// 버튼 핸들러 — 인터페이스 동일하지만 내부는 SVG 조작
 document.getElementById("btn-next").addEventListener("click", () => {
   lastPlayedIndex++;
-  colorNoteAt(lastPlayedIndex, "#28a745");   // 초록색 = 정답
+  colorNoteAt(lastPlayedIndex, "#28a745");
   osmd.cursor.next();
   updateNoteInfo();
 });
 
-// "이전" = 단순 후진 (색 안 건드림)
 document.getElementById("btn-prev").addEventListener("click", () => {
   osmd.cursor.previous();
   lastPlayedIndex--;
   updateNoteInfo();
 });
 
-// "처음으로" = 색 다 지우고 처음으로
 document.getElementById("btn-reset").addEventListener("click", () => {
-  allNotes.forEach(n => { n.NoteheadColor = undefined; });
-  osmd.render();
-  osmd.cursor.show();
+  resetAllColors();
   osmd.cursor.reset();
   lastPlayedIndex = -1;
   updateNoteInfo();
