@@ -3,26 +3,37 @@ const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
   drawTitle: true,
 });
 
-let graphicalNotes = [];    // SVG 접근 가능한 음표 배열
-let lastPlayedIndex = -1;
+// === 내부 상태 ===
+let graphicalNotes = [];
+let expectedIndex = 0;  // 지금 쳐야 하는 음표 인덱스
 
-async function init() {
-  try {
-    await osmd.load("assets/sample.musicxml");
-    osmd.render();              // 처음 한 번만 호출
-    osmd.cursor.show();
-
-    collectGraphicalNotes();
-    updateNoteInfo();
-    console.log(`✅ 렌더링 완료. 음표 ${graphicalNotes.length}개 수집`);
-    console.log("첫 그래픽 음표:", graphicalNotes[0]);
-  } catch (err) {
-    console.error("❌ 악보 로딩 실패:", err);
-  }
+// === 내부 함수: SVG 색 변경 ===
+function setNoteColor(index, color) {
+  if (index < 0 || index >= graphicalNotes.length) return;
+  const svgEl = graphicalNotes[index].getSVGGElement?.();
+  if (!svgEl) return;
+  svgEl.querySelectorAll('path').forEach(p => {
+    p.setAttribute('fill', color);
+    p.setAttribute('stroke', color);
+  });
 }
 
-// OSMD가 그린 그래픽 트리를 순회해서 GraphicalNote들을 평탄화 수집
-function collectGraphicalNotes() {
+function refreshNoteInfo() {
+  const info = document.getElementById("note-info");
+  const expected = window.scoreView.getCurrentExpected();
+  if (!expected) {
+    info.innerHTML = "<em>커서가 끝에 도달함</em>";
+    return;
+  }
+  info.innerHTML = `<strong>음표 #${expected.index}:</strong> MIDI ${expected.midiNumbers.join(", ")}`;
+}
+
+// === 로딩 ===
+async function loadScore(url) {
+  await osmd.load(url);
+  osmd.render();
+  osmd.cursor.show();
+
   graphicalNotes = [];
   for (const measureRow of osmd.GraphicSheet.MeasureList) {
     for (const gMeasure of measureRow) {
@@ -37,68 +48,65 @@ function collectGraphicalNotes() {
       }
     }
   }
+  expectedIndex = 0;
+  refreshNoteInfo();
+  console.log(`✅ 악보 로딩 완료. 음표 ${graphicalNotes.length}개`);
 }
 
-// ⭐ 핵심: 재렌더링 없이 SVG 직접 변경
-function colorNoteAt(index, color) {
-  if (index < 0 || index >= graphicalNotes.length) return;
-  const svgEl = graphicalNotes[index].getSVGGElement?.();
-  if (!svgEl) {
-    console.warn(`음표 ${index}: SVG 없음`);
-    return;
-  }
-  // 음표 그룹 안의 모든 path 색 변경 (notehead, stem 포함)
-  svgEl.querySelectorAll('path').forEach(p => {
-    p.setAttribute('fill', color);
-    p.setAttribute('stroke', color);
-  });
-}
+// === 🔓 외부 공개 API (comparator.js가 사용) ===
+window.scoreView = {
+  // 지금 쳐야 하는 음표의 정보. D가 입력이랑 비교할 때 씀.
+  getCurrentExpected() {
+    const notes = osmd.cursor.NotesUnderCursor();
+    if (!notes || notes.length === 0) return null;
+    return {
+      index: expectedIndex,
+      midiNumbers: notes
+        .filter(n => !n.isRest() && n.Pitch)
+        .map(n => n.Pitch.halfTone + 12)   // OSMD halfTone → MIDI 변환
+    };
+  },
 
-// 전체 색 초기화 (검정으로 복귀)
-function resetAllColors() {
-  for (const gNote of graphicalNotes) {
-    const svgEl = gNote.getSVGGElement?.();
-    if (!svgEl) continue;
-    svgEl.querySelectorAll('path').forEach(p => {
-      p.setAttribute('fill', '#000000');
-      p.setAttribute('stroke', '#000000');
-    });
-  }
-}
+  markCorrect(index) { setNoteColor(index, "#28a745"); },
+  markWrong(index)   { setNoteColor(index, "#dc3545"); },
 
-function updateNoteInfo() {
-  const notes = osmd.cursor.NotesUnderCursor();
-  const info = document.getElementById("note-info");
-  if (!notes || notes.length === 0) {
-    info.innerHTML = "<em>커서가 끝에 도달함</em>";
-    return;
-  }
-  const descriptions = notes.map(n => {
-    if (n.isRest()) return "쉼표";
-    return n.Pitch ? `pitch=${n.Pitch.halfTone} (MIDI=${n.Pitch.halfTone + 12})` : "(알 수 없음)";
-  });
-  info.innerHTML = `<strong>현재 음표:</strong> ${descriptions.join(", ")}`;
-}
+  // D가 판정 후 호출. 커서가 다음 음표로 이동.
+  advance() {
+    expectedIndex++;
+    osmd.cursor.next();
+    refreshNoteInfo();
+  },
 
-// 버튼 핸들러 — 인터페이스 동일하지만 내부는 SVG 조작
+  // 처음으로 (연습 재시작)
+  reset() {
+    for (let i = 0; i < graphicalNotes.length; i++) setNoteColor(i, "#000000");
+    osmd.cursor.reset();
+    expectedIndex = 0;
+    refreshNoteInfo();
+  },
+
+  getTotalNotes() { return graphicalNotes.length; }
+};
+
+// === 데모용 버튼 (실제로는 D의 MIDI 입력이 자리 차지) ===
 document.getElementById("btn-next").addEventListener("click", () => {
-  lastPlayedIndex++;
-  colorNoteAt(lastPlayedIndex, "#28a745");
-  osmd.cursor.next();
-  updateNoteInfo();
+  const expected = window.scoreView.getCurrentExpected();
+  if (!expected) return;
+  window.scoreView.markCorrect(expected.index);
+  window.scoreView.advance();
 });
 
 document.getElementById("btn-prev").addEventListener("click", () => {
   osmd.cursor.previous();
-  lastPlayedIndex--;
-  updateNoteInfo();
+  expectedIndex = Math.max(0, expectedIndex - 1);
+  refreshNoteInfo();
 });
 
 document.getElementById("btn-reset").addEventListener("click", () => {
-  resetAllColors();
-  osmd.cursor.reset();
-  lastPlayedIndex = -1;
-  updateNoteInfo();
+  window.scoreView.reset();
 });
 
-init();
+// === 시작 ===
+loadScore("assets/sample.musicxml").catch(err => {
+  console.error("❌ 악보 로딩 실패:", err);
+});
