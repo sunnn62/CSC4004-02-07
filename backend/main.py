@@ -27,7 +27,11 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(SCORES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+IMAGE_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+XML_EXTENSIONS = {"xml", "mxl"}
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | XML_EXTENSIONS
+
+PIPELINE_SCRIPT = Path(__file__).parent.parent / "sheet_parser" / "score_pipeline.py"
 
 
 class AppError(Exception):
