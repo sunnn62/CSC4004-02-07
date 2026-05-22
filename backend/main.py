@@ -2,8 +2,10 @@ import asyncio
 import json
 import os
 import shutil
+import subprocess
 import sys
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import List, Optional
 
@@ -168,17 +170,28 @@ async def _run_pipeline(score_id: str, file_path: str) -> None:
     output_path = _get_data_path(score_id)
     work_dir = os.path.join(SCORES_DIR, f"{score_id}_work")
     try:
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, str(PIPELINE_SCRIPT),
-            file_path, "-o", output_path, "--work-dir", work_dir,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            partial(
+                subprocess.run,
+                [sys.executable, str(PIPELINE_SCRIPT), file_path, "-o", output_path, "--work-dir", work_dir],
+                capture_output=True,
+                text=True,
+            ),
         )
-        await proc.communicate()
-        if proc.returncode != 0:
+        if result.returncode != 0:
+            print(f"[pipeline ERROR] score_id={score_id}")
+            print(result.stderr)
             with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
                 json.dump({"status": "failed"}, f)
-    except Exception:
+        else:
+            print(f"[pipeline OK] score_id={score_id}")
+            print(result.stdout)
+    except Exception as e:
+        import traceback
+        print(f"[pipeline EXCEPTION] score_id={score_id}: {e}")
+        traceback.print_exc()
         with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
             json.dump({"status": "failed"}, f)
 
