@@ -1,10 +1,13 @@
+import asyncio
 import json
 import os
 import shutil
+import sys
 import uuid
+from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -161,6 +164,25 @@ def _mock_score(score_id: str) -> dict:
     }
 
 
+async def _run_pipeline(score_id: str, file_path: str) -> None:
+    output_path = _get_data_path(score_id)
+    work_dir = os.path.join(SCORES_DIR, f"{score_id}_work")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, str(PIPELINE_SCRIPT),
+            file_path, "-o", output_path, "--work-dir", work_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+        if proc.returncode != 0:
+            with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
+                json.dump({"status": "failed"}, f)
+    except Exception:
+        with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
+            json.dump({"status": "failed"}, f)
+
+
 def _get_status_path(score_id: str) -> str:
     return os.path.join(SCORES_DIR, f"{score_id}_status.json")
 
@@ -178,21 +200,26 @@ def _assert_score_exists(score_id: str):
 # POST /api/upload
 # ---------------------------------------------------------------------------
 @app.post("/api/upload")
-async def upload_score(file: UploadFile = File(...)):
-    # TODO: oemer 연동 후 파일을 파싱 큐에 넣고 비동기 처리로 교체
+async def upload_score(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
     if ext not in ALLOWED_EXTENSIONS:
-        raise AppError(400, "INVALID_FILE", "PDF나 이미지만 지원합니다")
+        raise AppError(400, "INVALID_FILE", "PDF, 이미지, XML(MusicXML/MXL)만 지원합니다")
 
     score_id = str(uuid.uuid4())
-
     file_path = os.path.join(UPLOAD_DIR, f"{score_id}.{ext}")
+
     with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
     with open(_get_status_path(score_id), "w", encoding="utf-8") as f:
-        # TODO: oemer 처리 완료 시 status를 "done" 또는 "failed"로 업데이트
         json.dump({"status": "processing"}, f)
+
+    if ext in XML_EXTENSIONS:
+        # MusicXML/MXL → music21 직접 파싱 (oemer 불필요)
+        background_tasks.add_task(_run_pipeline, score_id, file_path)
+    else:
+        # PDF/이미지 → oemer → MusicXML → music21
+        background_tasks.add_task(_run_pipeline, score_id, file_path)
 
     return {"scoreId": score_id}
 
