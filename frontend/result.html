@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피아니 - 연습 결과</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/result.css">
+</head>
+<body>
+  <!-- 세로 모드 안내 -->
+  <div class="rotate-overlay">
+    <div class="rotate-icon">⟳</div>
+    <p>화면을 가로로 돌려주세요</p>
+  </div>
+
+  <div class="result-screen">
+    <header class="result-header">
+      <button class="close-btn" onclick="location.href='index.html'">×</button>
+      <h2 class="header-title">연습 결과</h2>
+      <button class="share-btn">공유</button>
+    </header>
+
+    <main class="result-body">
+      <!-- 좌측: 점수 + 통계 + 버튼 -->
+      <aside class="summary-panel">
+        <div class="song-name" id="song-name">로딩 중...</div>
+
+        <div class="big-score">
+          <span class="score-num" id="score-num">--</span>
+          <span class="score-total">/100</span>
+        </div>
+
+        <div class="score-trend" id="score-trend">계산 중...</div>
+
+        <div class="stat-cards">
+          <div class="stat-card">
+            <span class="stat-label">음정 정확도</span>
+            <span class="stat-value" id="accuracy">--<small>%</small></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">완주율</span>
+            <span class="stat-value" id="completion">--<small>%</small></span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">틀린 음</span>
+            <span class="stat-value" id="wrong-count">--<small>개</small></span>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="action-btn" id="btn-replay">다시 연습</button>
+          <button class="action-btn primary" id="btn-home">홈으로</button>
+        </div>
+      </aside>
+
+      <!-- 우측: 틀린 음 분석 -->
+      <section class="detail-panel">
+        <header class="detail-header">
+          <h3>틀린 음 분석</h3>
+          <span class="error-count-badge" id="error-count-badge">0곳</span>
+        </header>
+
+        <ul class="error-list" id="error-list">
+          <li class="error-empty">완벽해요! 틀린 음이 없습니다 🎉</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/result.js"></script>
+</body>
+</html>

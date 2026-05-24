@@ -1,12 +1,17 @@
 const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
   autoResize: true,
-  drawTitle: true,
+  drawTitle: false,   // 우리가 헤더에 직접 표시할 거라 OSMD 제목은 끔
 });
 
 // === 내부 상태 ===
-let graphicalNotes = [];                   // 전체 GraphicalNote (reset 용)
-let graphicalNotesByMeasure = new Map();   // 마디번호 → GraphicalNote[] (마디 리셋 용)
-let noteIdMap = new Map();                 // noteId → GraphicalNote (JSON 받으면 채워짐)
+let graphicalNotes = [];
+let graphicalNotesByMeasure = new Map();
+let noteIdMap = new Map();
+let errorLog = [];   // 오답 발생한 음표 기록 [{measureNumber, hand, expectedMidi}]
+
+// 통계 + 진행률 추적
+let stats = { correct: 0, wrong: 0 };
+let currentNoteIndex = 0;
 
 // === 내부 헬퍼 ===
 function colorGraphicalNote(gNote, color) {
@@ -31,7 +36,6 @@ function pitchResultToColor(pitchResult) {
   return pitchResult === 'correct' ? '#2D6E4E' : '#D64545';
 }
 
-//박자 표시 배너 
 function showJudgmentBanner(pitchResult, timingResult) {
   let text, type;
   if (pitchResult === 'wrong') {
@@ -43,9 +47,8 @@ function showJudgmentBanner(pitchResult, timingResult) {
   } else if (timingResult === '느림') {
     text = 'Slow'; type = 'slow';
   } else {
-    text = 'Perfect'; type = 'accurate';   // 첫 음 등 timing 면제
+    text = 'Perfect'; type = 'accurate';
   }
-
   const banner = document.getElementById("judgment-banner");
   if (!banner) return;
   banner.textContent = text;
@@ -53,21 +56,53 @@ function showJudgmentBanner(pitchResult, timingResult) {
   banner.classList.remove('show');
   void banner.offsetWidth;
   banner.classList.add('show');
-
   clearTimeout(banner._fadeTimer);
   banner._fadeTimer = setTimeout(() => banner.classList.remove('show'), 600);
 }
 
-// OSMD 커서가 현재 어느 마디에 있는지
+function updateStatsUI() {
+  const total = stats.correct + stats.wrong;
+  const acc = total === 0 ? 100 : Math.round(stats.correct / total * 100);
+  const accEl = document.getElementById('stat-accuracy');
+  const wrongEl = document.getElementById('stat-wrong');
+  if (accEl) accEl.innerHTML = `${acc}<small>%</small>`;
+  if (wrongEl) wrongEl.innerHTML = `${stats.wrong}<small>개</small>`;
+}
+
+function updateProgressUI() {
+  const fill = document.getElementById("progress-fill");
+  if (!fill || graphicalNotes.length === 0) return;
+  const pct = Math.min(100, (currentNoteIndex / graphicalNotes.length) * 100);
+  fill.style.width = `${pct}%`;
+}
+
+// 곡 정보를 헤더에 표시
+function updateSongInfo() {
+  const titleEl = document.getElementById("song-title");
+  const metaEl = document.getElementById("song-meta");
+  if (!titleEl || !metaEl) return;
+
+  let title = "곡 제목 없음";
+  let totalMeasures = 0;
+  let tempo = "?";
+
+  try {
+    title = osmd.Sheet?.TitleString || title;
+    totalMeasures = osmd.Sheet?.SourceMeasures?.length || 0;
+    tempo = Math.round(osmd.Sheet?.DefaultStartTempoInBpm || 0) || "?";
+  } catch (e) { /* OSMD 버전 차이 방어 */ }
+
+  titleEl.textContent = title;
+  metaEl.textContent = `${totalMeasures}마디 · 양손 · ♩=${tempo}`;
+}
+
+// 커서 마디 추적
 function getCurrentCursorMeasureNumber() {
   try {
     const notes = osmd.cursor.NotesUnderCursor();
     if (!notes || notes.length === 0) return null;
-    const n = notes[0];
-    return n.ParentVoiceEntry?.ParentSourceStaffEntry?.VerticalContainerParent?.ParentSourceMeasure?.MeasureNumber ?? null;
-  } catch (e) {
-    return null;
-  }
+    return notes[0].ParentVoiceEntry?.ParentSourceStaffEntry?.VerticalContainerParent?.ParentSourceMeasure?.MeasureNumber ?? null;
+  } catch (e) { return null; }
 }
 
 function jumpCursorToMeasure(measureNumber) {
@@ -76,31 +111,16 @@ function jumpCursorToMeasure(measureNumber) {
   while (safety++ < 10000) {
     const cur = getCurrentCursorMeasureNumber();
     if (cur === measureNumber) return;
-    if (cur !== null && cur > measureNumber) {
-      console.warn(`커서가 마디 ${measureNumber} 지나쳐버림 (현재 ${cur})`);
-      return;
-    }
+    if (cur !== null && cur > measureNumber) return;
     osmd.cursor.next();
-    // 끝 도달 체크
     const notes = osmd.cursor.NotesUnderCursor();
     if (!notes || notes.length === 0) return;
   }
 }
 
-function refreshNoteInfo() {
-  const info = document.getElementById("note-info");
-  if (!info) return;
-  const expected = window.scoreView.getCurrentExpected();
-  if (!expected) {
-    info.innerHTML = "<em>커서가 끝에 도달함</em>";
-    return;
-  }
-  info.innerHTML = `<strong>현재 음표:</strong> MIDI ${expected.midiNumbers.join(", ")}`;
-}
-
 // === 로딩 ===
-async function loadScore(url) {
-  await osmd.load(url);
+async function loadScore(source) {
+  await osmd.load(source);
   osmd.render();
   osmd.cursor.show();
 
@@ -110,10 +130,7 @@ async function loadScore(url) {
   for (const measureRow of osmd.GraphicSheet.MeasureList) {
     for (const gMeasure of measureRow) {
       if (!gMeasure) continue;
-      // 마디 번호 얻기 (graphical → source 추적)
-      const sourceMeasure = gMeasure.parentSourceMeasure;
-      const measureNumber = sourceMeasure?.MeasureNumber ?? null;
-
+      const measureNumber = gMeasure.parentSourceMeasure?.MeasureNumber ?? null;
       for (const staffEntry of gMeasure.staffEntries) {
         if (!staffEntry) continue;
         for (const gVoiceEntry of staffEntry.graphicalVoiceEntries) {
@@ -130,17 +147,22 @@ async function loadScore(url) {
       }
     }
   }
-  refreshNoteInfo();
+
+  // UI 초기화
+  stats = { correct: 0, wrong: 0 };
+  errorLog = []; 
+  currentNoteIndex = 0;
+  updateStatsUI();
+  updateProgressUI();
+  updateSongInfo();
+
   console.log(`✅ 로딩 완료. 음표 ${graphicalNotes.length}개, 마디 ${graphicalNotesByMeasure.size}개`);
 }
 
-// === 🔓 외부 API (D가 사용) ===
+// === 🔓 외부 API ===
 window.scoreView = {
-  // (D 옵션) JSON 받으면 noteId 매핑 빌드
   attachScoreJson(scoreJson) {
     noteIdMap.clear();
-    // TODO: scoreJson.measures 순회하며 noteId → GraphicalNote 매핑 구축
-    // 박자+손+pitch로 매칭. 지금은 placeholder.
     console.log("[scoreView] JSON 받음. 매핑 구축은 차후 작업.");
   },
 
@@ -154,68 +176,86 @@ window.scoreView = {
     };
   },
 
-  // ⭐ D 메인 API: 음표 강조 + 판정 배너
   highlightNote(noteId, pitchResult, timingResult) {
-    const color = pitchResultToColor(pitchResult);
-    
-    // noteId 매핑이 있으면 그걸로, 없으면 현재 커서 위치로
-    if (noteId && noteIdMap.has(noteId)) {
-      colorGraphicalNote(noteIdMap.get(noteId), color);
-    } else {
-      colorCurrentCursorNotes(color);
+  const color = pitchResultToColor(pitchResult);
+  if (noteId && noteIdMap.has(noteId)) {
+    colorGraphicalNote(noteIdMap.get(noteId), color);
+  } else {
+    colorCurrentCursorNotes(color);
+  }
+  
+  if (pitchResult === 'correct') {
+    stats.correct++;
+  } else {
+    stats.wrong++;
+    // 🆕 오답 정보 기록
+    const sourceNotes = osmd.cursor.NotesUnderCursor();
+    if (sourceNotes && sourceNotes.length > 0) {
+      const n = sourceNotes[0];
+      const measureNumber = getCurrentCursorMeasureNumber();
+      const staffIdx = n.ParentVoiceEntry?.ParentSourceStaffEntry?.ParentStaff?.idInMusicSheet ?? 0;
+      const hand = staffIdx === 0 ? '오른손' : '왼손';
+      const expectedMidi = n.Pitch ? n.Pitch.halfTone + 12 : null;
+      errorLog.push({ measureNumber, hand, expectedMidi });
     }
+  }
+  updateStatsUI();
+  showJudgmentBanner(pitchResult, timingResult);
+},
 
-    showJudgmentBanner(pitchResult, timingResult);
-  },
-
-  // ⭐ D 메인 API: 커서 이동
   advanceCursor(noteId) {
     osmd.cursor.next();
-    refreshNoteInfo();
+    currentNoteIndex++;
+    updateProgressUI();
   },
 
-  // ⭐ D 메인 API: 마디 리셋 (긴 멈춤 시)
   resetCursorToMeasure(measureNumber) {
-    // 1. 해당 마디의 모든 음표 색 초기화
     const gNotes = graphicalNotesByMeasure.get(measureNumber) || [];
     gNotes.forEach(g => colorGraphicalNote(g, '#000000'));
-
-    // 2. 커서를 해당 마디 첫 음표로
     jumpCursorToMeasure(measureNumber);
-    refreshNoteInfo();
     console.log(`[scoreView] 마디 ${measureNumber}로 리셋`);
   },
 
-  // ⭐ D 메인 API: 곡 완료
   showResultScreen() {
-    window.location.href = 'result.html';
-  },
+  // 🆕 sessionStorage에 결과 저장
+  const params = new URLSearchParams(window.location.search);
+  const result = {
+    scoreId: params.get('scoreId'),
+    songTitle: osmd.Sheet?.TitleString || '곡 제목 없음',
+    totalNotes: graphicalNotes.length,
+    correctNotes: stats.correct,
+    wrongNotes: stats.wrong,
+    finishedNotes: currentNoteIndex,
+    errorLog: errorLog,
+  };
+  sessionStorage.setItem('practiceResult', JSON.stringify(result));
+  window.location.href = 'result.html';
+},
 
-  // 처음부터 다시 (사용자가 명시적으로 누를 때용)
   reset() {
-    graphicalNotes.forEach(g => colorGraphicalNote(g, '#000000'));
-    osmd.cursor.reset();
-    refreshNoteInfo();
-  }
+  graphicalNotes.forEach(g => colorGraphicalNote(g, '#000000'));
+  osmd.cursor.reset();
+  stats = { correct: 0, wrong: 0 };
+  currentNoteIndex = 0;
+  errorLog = [];      // 🆕 추가
+  updateStatsUI();
+  updateProgressUI();
+}
 };
 
-// === 데모 버튼 (D 없이 시각 확인용) ===
+// === 데모 버튼 ===
 document.getElementById("btn-next")?.addEventListener("click", () => {
-  // 정답 + 정확 시뮬레이션
   window.scoreView.highlightNote(null, 'correct', '정확');
   window.scoreView.advanceCursor(null);
 });
-
 document.getElementById("btn-prev")?.addEventListener("click", () => {
   osmd.cursor.previous();
-  refreshNoteInfo();
+  currentNoteIndex = Math.max(0, currentNoteIndex - 1);
+  updateProgressUI();
 });
-
 document.getElementById("btn-reset")?.addEventListener("click", () => {
   window.scoreView.reset();
 });
-
-// 추가 테스트 버튼 (있으면 동작)
 document.getElementById("btn-wrong")?.addEventListener("click", () => {
   window.scoreView.highlightNote(null, 'wrong', null);
   window.scoreView.advanceCursor(null);
@@ -231,15 +271,28 @@ document.getElementById("btn-slow")?.addEventListener("click", () => {
 document.getElementById("btn-reset-m1")?.addEventListener("click", () => {
   window.scoreView.resetCursorToMeasure(1);
 });
+document.getElementById("btn-show-result")?.addEventListener("click", () => {
+  window.scoreView.showResultScreen();
+});
+
+// === "다음 마디로" 버튼 ===
+document.getElementById("btn-next-measure")?.addEventListener("click", () => {
+  const cur = getCurrentCursorMeasureNumber();
+  if (cur !== null) {
+    jumpCursorToMeasure(cur + 1);
+  }
+});
+
+// === "일시정지" 버튼 (지금은 자리만) ===
+document.getElementById("btn-pause")?.addEventListener("click", () => {
+  console.log("일시정지 — 모달은 다음 작업에서 구현");
+});
 
 // === 시작 ===
 async function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   const scoreId = params.get("scoreId");
 
-  // 백엔드에서 가져올지, 로컬에서 가져올지 결정
-  // - scoreId 있고 mock 아니면 → 백엔드
-  // - 그 외 → 로컬 canon.mxl
   const useBackend = scoreId && scoreId.startsWith("mock-") === false && USE_MOCK === false;
   const scoreSource = useBackend ? api.getMusicXmlUrl(scoreId) : "assets/canon.mxl";
 
@@ -248,7 +301,6 @@ async function bootstrap() {
     await loadScore(scoreSource);
   } catch (err) {
     console.error("❌ 악보 로딩 실패:", err);
-    // 백엔드 실패 시 로컬 fallback
     if (useBackend) {
       console.warn("⤴ 로컬 canon.mxl로 fallback");
       try { await loadScore("assets/canon.mxl"); } catch (e) { console.error(e); }
