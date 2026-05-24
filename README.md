@@ -39,8 +39,8 @@ frontend/
 │       ├── midi/
 │       └── comparator/
 └── assets/
-├── sample.musicxml      # 테스트용 C 메이저 스케일
-└── canon.mxl            # 테스트용 Canon in D
+    ├── sample.musicxml      # 테스트용 C 메이저 스케일
+    └── canon.mxl            # 테스트용 Canon in D
 ```
 ---
 
