@@ -69,10 +69,17 @@ def _mock_score(score_id: str) -> dict:
             "tempo": 120.0,
             "timeSignature": "4/4",
             "keySignature": "C major",
+            "totalBeats": 8.0,
+            "estimatedDurationSec": 4.0,
         },
+        "tempoMap": [
+            {"bpm": 120.0, "text": None, "absoluteStartBeat": 0.0}
+        ],
         "measures": [
             {
                 "number": 1,
+                "startBeat": 0.0,
+                "endBeat": 4.0,
                 "repeatStart": False,
                 "repeatEnd": False,
                 "tempos": [{"bpm": 120.0, "text": None, "startBeat": 0.0, "absoluteStartBeat": 0.0}],
@@ -82,11 +89,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n1",
                         "pitches": [60],
+                        "pitchNames": ["C4"],
                         "duration": 1.0,
                         "startBeat": 0.0,
                         "absoluteStartBeat": 0.0,
+                        "absoluteEndBeat": 1.0,
                         "hand": "right",
                         "isRest": False,
+                        "shouldPlay": True,
+                        "onsetId": "m1_b0_right",
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -94,11 +105,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n2",
                         "pitches": [62],
+                        "pitchNames": ["D4"],
                         "duration": 1.0,
                         "startBeat": 1.0,
                         "absoluteStartBeat": 1.0,
+                        "absoluteEndBeat": 2.0,
                         "hand": "right",
                         "isRest": False,
+                        "shouldPlay": True,
+                        "onsetId": "m1_b1_right",
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -106,11 +121,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n3",
                         "pitches": [64],
+                        "pitchNames": ["E4"],
                         "duration": 1.0,
                         "startBeat": 2.0,
                         "absoluteStartBeat": 2.0,
+                        "absoluteEndBeat": 3.0,
                         "hand": "right",
                         "isRest": False,
+                        "shouldPlay": True,
+                        "onsetId": "m1_b2_right",
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -118,11 +137,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n4",
                         "pitches": [65],
+                        "pitchNames": ["F4"],
                         "duration": 1.0,
                         "startBeat": 3.0,
                         "absoluteStartBeat": 3.0,
+                        "absoluteEndBeat": 4.0,
                         "hand": "right",
                         "isRest": False,
+                        "shouldPlay": True,
+                        "onsetId": "m1_b3_right",
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -131,6 +154,8 @@ def _mock_score(score_id: str) -> dict:
             },
             {
                 "number": 2,
+                "startBeat": 4.0,
+                "endBeat": 8.0,
                 "repeatStart": False,
                 "repeatEnd": False,
                 "tempos": [],
@@ -140,11 +165,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n5",
                         "pitches": [48, 52, 55],
+                        "pitchNames": ["C3", "E3", "G3"],
                         "duration": 2.0,
                         "startBeat": 0.0,
                         "absoluteStartBeat": 4.0,
+                        "absoluteEndBeat": 6.0,
                         "hand": "left",
                         "isRest": False,
+                        "shouldPlay": True,
+                        "onsetId": "m2_b0_left",
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -152,11 +181,15 @@ def _mock_score(score_id: str) -> dict:
                     {
                         "id": "n6",
                         "pitches": [],
+                        "pitchNames": [],
                         "duration": 2.0,
                         "startBeat": 2.0,
                         "absoluteStartBeat": 6.0,
+                        "absoluteEndBeat": 8.0,
                         "hand": "left",
                         "isRest": True,
+                        "shouldPlay": False,
+                        "onsetId": None,
                         "tie": None,
                         "isGrace": False,
                         "articulations": [],
@@ -326,7 +359,6 @@ async def get_musicxml(score_id: str):
 # ---------------------------------------------------------------------------
 @app.post("/api/result")
 async def save_result(result: PracticeResult):
-    # TODO: 누적 통계 집계 및 피드백 생성 로직 추가
     _assert_score_exists(result.scoreId)
     result_path = os.path.join(RESULTS_DIR, f"{result.scoreId}_result.json")
     with open(result_path, "w", encoding="utf-8") as f:
