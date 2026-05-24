@@ -34,3 +34,31 @@ body {
   min-height: 400px;
   padding: 20px;
 }
+
+/* === 판정 배너 === */
+.judgment-banner {
+  position: fixed;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  font-size: 36px;           /* 56 → 36 */
+  font-weight: 700;          /* 800 → 700 */
+  padding: 10px 28px;        /* 16 40 → 10 28 */
+  border-radius: 12px;
+  color: white;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1000;
+  letter-spacing: 1px;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.judgment-banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+/* 음정 맞으면 다 초록, 틀리면 빨강 — 박자는 텍스트로만 구분 */
+.judgment-banner.accurate,
+.judgment-banner.fast,
+.judgment-banner.slow   { background: rgba(45, 110, 78, 0.72); }
+.judgment-banner.wrong  { background: rgba(214, 69, 69, 0.72); }
