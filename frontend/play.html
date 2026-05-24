@@ -81,6 +81,41 @@
   <!-- 판정 배너 -->
   <div id="judgment-banner" class="judgment-banner"></div>
 
+  <!-- 일시정지 모달 -->
+<div class="modal-overlay" id="pause-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-icon">⏸</div>
+      <div class="modal-title-block">
+        <h3 class="modal-title">일시정지</h3>
+        <p class="modal-subtitle">잠시 쉬어가세요. 이어서 연주할 수 있어요.</p>
+      </div>
+    </div>
+
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <span class="modal-stat-label">진행</span>
+        <span class="modal-stat-value" id="modal-progress">0/0 마디</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-label">음정 정확도</span>
+        <span class="modal-stat-value" id="modal-accuracy">100%</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-label">틀린 음</span>
+        <span class="modal-stat-value" id="modal-wrong">0개</span>
+      </div>
+    </div>
+
+    <button class="modal-primary-btn" id="btn-resume">▶ 이어서 연주</button>
+
+    <div class="modal-secondary-buttons">
+      <button class="modal-secondary-btn" id="btn-restart">처음부터</button>
+      <button class="modal-secondary-btn" id="btn-end">연주 끝내기</button>
+    </div>
+  </div>
+</div>
+
   <!-- 스크립트 -->
   <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
   <script src="js/api.js"></script>

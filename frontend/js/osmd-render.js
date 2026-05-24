@@ -283,9 +283,42 @@ document.getElementById("btn-next-measure")?.addEventListener("click", () => {
   }
 });
 
-// === "일시정지" 버튼 (지금은 자리만) ===
-document.getElementById("btn-pause")?.addEventListener("click", () => {
-  console.log("일시정지 — 모달은 다음 작업에서 구현");
+// === 일시정지 모달 ===
+function openPauseModal() {
+  // 모달에 현재 통계 표시
+  const total = stats.correct + stats.wrong;
+  const acc = total === 0 ? 100 : Math.round(stats.correct / total * 100);
+  document.getElementById("modal-accuracy").textContent = `${acc}%`;
+  document.getElementById("modal-wrong").textContent = `${stats.wrong}개`;
+
+  const currentMeasure = getCurrentCursorMeasureNumber() || 0;
+  const totalMeasures = osmd.Sheet?.SourceMeasures?.length || 0;
+  document.getElementById("modal-progress").textContent = 
+    `${currentMeasure}/${totalMeasures} 마디`;
+
+  document.getElementById("pause-modal").classList.add("show");
+  
+  // TODO: D 통합 시 midiService.pause() 같은 거 호출해서 입력 차단
+}
+
+function closePauseModal() {
+  document.getElementById("pause-modal").classList.remove("show");
+  // TODO: D 통합 시 midiService.resume() 호출
+}
+
+// 기존 btn-pause 핸들러 교체
+document.getElementById("btn-pause")?.addEventListener("click", openPauseModal);
+
+// 모달 안의 버튼들
+document.getElementById("btn-resume")?.addEventListener("click", closePauseModal);
+
+document.getElementById("btn-restart")?.addEventListener("click", () => {
+  window.scoreView.reset();
+  closePauseModal();
+});
+
+document.getElementById("btn-end")?.addEventListener("click", () => {
+  window.scoreView.showResultScreen();   // result.html로 이동
 });
 
 // === 시작 ===
