@@ -20,6 +20,7 @@
 ---
 
 ## 파일 구조
+```
 frontend/
 ├── index.html               # 업로드 페이지
 ├── play.html                # 연주 페이지
@@ -40,6 +41,7 @@ frontend/
 └── assets/
 ├── sample.musicxml      # 테스트용 C 메이저 스케일
 └── canon.mxl            # 테스트용 Canon in D
+```
 ---
 
 ## 실행 방법
