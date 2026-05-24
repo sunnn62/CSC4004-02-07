@@ -2,10 +2,86 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>실시간 피아노 코칭 - 업로드</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F5F1E8">
+  <title>피아니 - 악보 추가</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/upload.css">
 </head>
 <body>
-  <h1>안녕, 첫 페이지!</h1>
-  <p>여기는 악보 업로드 화면이 될 예정.</p>
+  <!-- 세로 모드일 때 가로로 돌리라는 안내 -->
+  <div class="rotate-overlay">
+    <div class="rotate-icon">⟳</div>
+    <p>화면을 가로로 돌려주세요</p>
+  </div>
+
+  <div class="app">
+    <!-- 사이드바 (모든 화면 공통) -->
+    <aside class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">🎹</div>
+        <div class="logo-text">피아니</div>
+      </div>
+
+      <nav class="nav">
+        <a href="index.html" class="nav-item"><span class="nav-icon">⌂</span>홈</a>
+        <a href="index.html" class="nav-item active"><span class="nav-icon">▶</span>연습</a>
+        <a href="#" class="nav-item"><span class="nav-icon">📊</span>기록</a>
+        <a href="#" class="nav-item"><span class="nav-icon">👤</span>프로필</a>
+      </nav>
+
+      <div class="device-status">
+        <div class="status-dot"></div>
+        <div class="status-text">
+          <div class="status-label">전자 피아노 연결됨</div>
+          <div class="status-detail">Casio CDP-S360</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 메인 영역 -->
+    <main class="main">
+      <header class="main-header">
+        <button class="back-btn" onclick="history.back()">‹</button>
+        <h2 class="section-title">악보 추가</h2>
+        <div></div>
+      </header>
+
+      <div class="content">
+        <h1 class="title">연주할 악보를 가져와 주세요</h1>
+        <p class="subtitle">이미지나 PDF를 인식해서 음표를 자동으로 분석해 드려요.</p>
+
+        <div class="method-grid">
+          <button class="method-card" data-method="camera">
+            <div class="method-icon">📷</div>
+            <div class="method-label">카메라로 촬영</div>
+            <div class="method-hint">종이 악보를 바로 찍어주세요</div>
+          </button>
+
+          <button class="method-card" data-method="library">
+            <div class="method-icon">🖼️</div>
+            <div class="method-label">사진 라이브러리</div>
+            <div class="method-hint">갤러리에서 사진을 선택해요</div>
+          </button>
+
+          <button class="method-card" data-method="pdf">
+            <div class="method-icon">📄</div>
+            <div class="method-label">PDF 파일</div>
+            <div class="method-hint">파일에서 PDF를 불러와요</div>
+          </button>
+        </div>
+
+        <!-- 숨겨진 input들 (각 카드마다 다른 동작) -->
+        <input type="file" id="file-camera"  accept="image/*" capture="environment" hidden>
+        <input type="file" id="file-library" accept="image/*" hidden>
+        <input type="file" id="file-pdf"     accept=".pdf"    hidden>
+
+        <div id="status" class="status"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/upload.js"></script>
 </body>
 </html>
