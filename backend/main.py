@@ -10,7 +10,7 @@ from functools import partial
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -167,19 +167,31 @@ def _mock_score(score_id: str) -> dict:
     }
 
 
-async def _run_pipeline(score_id: str, file_path: str) -> None:
+async def _run_pipeline(
+    score_id: str,
+    file_path: str,
+    tempo: Optional[float] = None,
+    key_fifths: Optional[int] = None,
+    time_signature: Optional[str] = None,
+    title: Optional[str] = None,
+    max_omr_pages: int = 1,
+) -> None:
     output_path = _get_data_path(score_id)
     work_dir = os.path.join(SCORES_DIR, f"{score_id}_work")
+    cmd = [sys.executable, str(PIPELINE_SCRIPT), file_path, "-o", output_path, "--work-dir", work_dir, "--max-omr-pages", str(max_omr_pages)]
+    if tempo is not None:
+        cmd += ["--tempo", str(tempo)]
+    if key_fifths is not None:
+        cmd += ["--key-fifths", str(key_fifths)]
+    if time_signature is not None:
+        cmd += ["--time-signature", time_signature]
+    if title is not None:
+        cmd += ["--title", title]
     try:
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
-            partial(
-                subprocess.run,
-                [sys.executable, str(PIPELINE_SCRIPT), file_path, "-o", output_path, "--work-dir", work_dir],
-                capture_output=True,
-                text=True,
-            ),
+            partial(subprocess.run, cmd, capture_output=True, text=True),
         )
         if result.returncode != 0:
             print(f"[pipeline ERROR] score_id={score_id}")
@@ -238,7 +250,15 @@ async def health():
 # POST /api/upload
 # ---------------------------------------------------------------------------
 @app.post("/api/upload")
-async def upload_score(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+async def upload_score(
+    file: UploadFile = File(...),
+    background_tasks: BackgroundTasks = None,
+    tempo: Optional[float] = Form(None),
+    key_fifths: Optional[int] = Form(None),
+    time_signature: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    max_omr_pages: int = Form(1),
+):
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
     if ext not in ALLOWED_EXTENSIONS:
         raise AppError(400, "INVALID_FILE", "PDF, 이미지, XML(MusicXML/MXL)만 지원합니다")
@@ -254,10 +274,10 @@ async def upload_score(file: UploadFile = File(...), background_tasks: Backgroun
 
     if ext in XML_EXTENSIONS:
         # MusicXML/MXL → music21 직접 파싱 (oemer 불필요)
-        background_tasks.add_task(_run_pipeline, score_id, file_path)
+        background_tasks.add_task(_run_pipeline, score_id, file_path, tempo, key_fifths, time_signature, title, max_omr_pages)
     else:
         # PDF/이미지 → oemer → MusicXML → music21
-        background_tasks.add_task(_run_pipeline, score_id, file_path)
+        background_tasks.add_task(_run_pipeline, score_id, file_path, tempo, key_fifths, time_signature, title, max_omr_pages)
 
     return {"scoreId": score_id}
 
