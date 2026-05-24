@@ -1,4 +1,5 @@
 import asyncio
+import glob
 import json
 import os
 import shutil
@@ -11,7 +12,7 @@ from typing import List, Optional
 
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 app = FastAPI(title="Piano Score API")
@@ -204,9 +205,33 @@ def _get_data_path(score_id: str) -> str:
     return os.path.join(SCORES_DIR, f"{score_id}_data.json")
 
 
+def _find_musicxml_path(score_id: str) -> Optional[str]:
+    # XML/MXL 직접 업로드한 경우
+    for ext in XML_EXTENSIONS:
+        path = os.path.join(UPLOAD_DIR, f"{score_id}.{ext}")
+        if os.path.exists(path):
+            return path
+    # PDF/이미지에서 oemer가 생성한 MusicXML
+    work_musicxml_dir = os.path.join(SCORES_DIR, f"{score_id}_work", "musicxml")
+    if os.path.exists(work_musicxml_dir):
+        files = glob.glob(os.path.join(work_musicxml_dir, "*.xml")) + \
+                glob.glob(os.path.join(work_musicxml_dir, "*.musicxml"))
+        if files:
+            return files[0]
+    return None
+
+
 def _assert_score_exists(score_id: str):
     if not os.path.exists(_get_status_path(score_id)):
         raise AppError(404, "NOT_FOUND", "해당 scoreId를 찾을 수 없습니다")
+
+
+# ---------------------------------------------------------------------------
+# GET /health
+# ---------------------------------------------------------------------------
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 # ---------------------------------------------------------------------------
@@ -260,6 +285,20 @@ async def get_score(score_id: str):
         raise AppError(425, "NOT_READY", "아직 처리 중입니다")
     with open(data_path, encoding="utf-8") as f:
         return json.load(f)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/score/{scoreId}/musicxml
+# ---------------------------------------------------------------------------
+@app.get("/api/score/{score_id}/musicxml")
+async def get_musicxml(score_id: str):
+    _assert_score_exists(score_id)
+    if not os.path.exists(_get_data_path(score_id)):
+        raise AppError(425, "NOT_READY", "아직 처리 중입니다")
+    xml_path = _find_musicxml_path(score_id)
+    if xml_path is None:
+        raise AppError(404, "NOT_FOUND", "MusicXML 파일을 찾을 수 없습니다")
+    return FileResponse(xml_path, media_type="application/xml", filename=f"{score_id}.xml")
 
 
 # ---------------------------------------------------------------------------
