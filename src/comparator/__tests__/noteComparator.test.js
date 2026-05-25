@@ -63,6 +63,26 @@ describe('buildPlayList 필터링', () => {
     const c = new NoteComparator(score);
     expect(c._playList.map((n) => n.id)).toEqual(['n1', 'n3']);
   });
+
+  // 파트 A(score_pipeline.py)가 shouldPlay 필드를 계산해서 넘겨주는 경우
+  it('shouldPlay:false 음표를 제외한다 (파트 A 연동)', () => {
+    const score = makeScore([
+      note('n1', [60], 0, { shouldPlay: true }),
+      note('n2', [60], 1, { shouldPlay: false }),  // tie:stop 등 파트 A가 판단
+      note('n3', [62], 2, { shouldPlay: true }),
+    ]);
+    const c = new NoteComparator(score);
+    expect(c._playList.map((n) => n.id)).toEqual(['n1', 'n3']);
+  });
+
+  it('shouldPlay:true면 isRest·tie 무관하게 포함한다 (shouldPlay 우선)', () => {
+    // 실제로 이런 케이스는 없지만 shouldPlay가 최우선임을 보장
+    const score = makeScore([
+      note('n1', [60], 0, { shouldPlay: true, isRest: true }),
+    ]);
+    const c = new NoteComparator(score);
+    expect(c._playList.map((n) => n.id)).toEqual(['n1']);
+  });
 });
 
 describe('음정 판정', () => {
