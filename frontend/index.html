@@ -7,6 +7,9 @@
   <title>피아니 - 악보 추가</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
   <link rel="stylesheet" href="css/upload.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="css/sidebar.css">   <!-- 🆕 추가 -->
+<link rel="stylesheet" href="css/upload.css">
 </head>
 <body>
   <!-- 세로 모드일 때 가로로 돌리라는 안내 -->
@@ -16,28 +19,7 @@
   </div>
 
   <div class="app">
-    <!-- 사이드바 (모든 화면 공통) -->
-    <aside class="sidebar">
-      <div class="logo">
-        <div class="logo-icon">🎹</div>
-        <div class="logo-text">피아니</div>
-      </div>
-
-      <nav class="nav">
-        <a href="index.html" class="nav-item"><span class="nav-icon">⌂</span>홈</a>
-        <a href="index.html" class="nav-item active"><span class="nav-icon">▶</span>연습</a>
-        <a href="#" class="nav-item"><span class="nav-icon">📊</span>기록</a>
-        <a href="#" class="nav-item"><span class="nav-icon">👤</span>프로필</a>
-      </nav>
-
-      <div class="device-status">
-        <div class="status-dot"></div>
-        <div class="status-text">
-          <div class="status-label">전자 피아노 연결됨</div>
-          <div class="status-detail">Casio CDP-S360</div>
-        </div>
-      </div>
-    </aside>
+    <div id="sidebar-container"></div>
 
     <!-- 메인 영역 -->
     <main class="main">
@@ -83,5 +65,10 @@
 
   <script src="js/api.js"></script>
   <script src="js/upload.js"></script>
+
+  <script type="module">
+  import { renderSidebar } from './js/sidebar.js';
+  renderSidebar('practice');   // 업로드는 "연습" 메뉴 활성화
+  </script>
 </body>
 </html>
