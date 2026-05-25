@@ -236,3 +236,45 @@ body {
 }
 .start-btn:hover { opacity: 0.92; }
 .start-btn:active { transform: translateY(1px); }
+
+/* ───── 악보 미리보기 ───── */
+.preview-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  margin-bottom: 20px;
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.preview-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.preview-note {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.preview-osmd {
+  min-height: 140px;
+  position: relative;
+  overflow: hidden;
+}
+.preview-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+/* OSMD가 그린 SVG 폭 제한 */
+.preview-osmd svg {
+  max-width: 100%;
+  height: auto !important;
+}

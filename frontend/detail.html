@@ -21,6 +21,17 @@
         <div class="song-composer" id="song-composer">—</div>
       </header>
 
+      <!-- 악보 미리보기 -->
+    <section class="preview-card">
+        <div class="preview-header">
+            <span class="preview-label">악보 미리보기</span>
+            <span class="preview-note">첫 4마디</span>
+        </div>
+        <div class="preview-osmd" id="preview-osmd">
+            <div class="preview-status">악보 불러오는 중...</div>
+        </div>
+    </section>
+
       <!-- 곡 정보 카드 -->
       <section class="info-card">
         <div class="info-item">
@@ -97,6 +108,12 @@
     import { renderSidebar } from './js/sidebar.js';
     renderSidebar('practice', document.getElementById('sidebar'));
   </script>
+  
+  <script src="js/api.js"></script>
+  <script src="js/detail.js"></script>
+  
+  <!-- OSMD 라이브러리 (play.html이랑 같은 버전 써야 함, 다르면 통일) -->
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.7/build/opensheetmusicdisplay.min.js"></script>
   <script src="js/api.js"></script>
   <script src="js/detail.js"></script>
 </body>

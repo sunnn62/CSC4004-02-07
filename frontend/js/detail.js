@@ -97,14 +97,55 @@ document.getElementById('start-btn').addEventListener('click', () => {
   window.location.href = `play.html?scoreId=${state.scoreId}`;
 });
 
-// ───── 10. 부트스트랩 ─────
+// ───── 10. 악보 미리보기 (OSMD) ─────
+let previewOsmd = null;
+
+async function renderPreview(scoreId) {
+  const container = document.getElementById('preview-osmd');
+  const status = container?.querySelector('.preview-status');
+  if (!container) return;
+
+  if (typeof opensheetmusicdisplay === 'undefined') {
+    if (status) status.textContent = 'OSMD 라이브러리 로드 실패';
+    return;
+  }
+
+  try {
+    // TODO: 백엔드 연결 시 교체
+    //   const xmlUrl = `http://localhost:8000/api/score/${scoreId}/musicxml`;
+    const xmlUrl = 'assets/canon.mxl';  // mock
+
+    previewOsmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+      autoResize: true,
+      drawTitle: false,
+      drawSubtitle: false,
+      drawComposer: false,
+      drawCredits: false,
+      drawPartNames: false,
+      drawingParameters: 'compact',
+      drawUpToMeasureNumber: 4,   // 첫 4마디만
+    });
+
+    await previewOsmd.load(xmlUrl);
+    previewOsmd.render();
+    if (status) status.remove();
+  } catch (err) {
+    console.error('[detail] 미리보기 렌더 실패:', err);
+    if (status) status.textContent = '미리보기를 불러올 수 없습니다';
+  }
+}
+
+
+// ───── 11. 부트스트랩 ─────
 (async function init() {
   setRepeat(1);
   try {
     const data = await loadScore(scoreId);
     renderMetadata(data);
+    renderPreview(scoreId);
   } catch (err) {
     console.error('[detail] 곡 로드 실패:', err);
     document.getElementById('song-title').textContent = '곡을 불러올 수 없습니다';
   }
 })();
+
