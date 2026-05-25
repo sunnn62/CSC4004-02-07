@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>피아니 - 악보 상세</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/detail.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+
+    <main class="main">
+      <a href="home.html" class="back-link">← 뒤로</a>
+
+      <!-- 곡 헤더 -->
+      <header class="detail-header">
+        <h1 class="song-title" id="song-title">—</h1>
+        <div class="song-composer" id="song-composer">—</div>
+      </header>
+
+      <!-- 곡 정보 카드 -->
+      <section class="info-card">
+        <div class="info-item">
+          <div class="info-label">박자표</div>
+          <div class="info-value" id="time-signature">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">조표</div>
+          <div class="info-value" id="key-signature">—</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">원본 템포</div>
+          <div class="info-value">♩=<span id="original-tempo">—</span></div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">예상 시간</div>
+          <div class="info-value" id="duration">—</div>
+        </div>
+      </section>
+
+      <!-- 연주 설정 -->
+      <h2 class="section-title">연주 설정</h2>
+      <section class="settings-card">
+
+        <!-- 템포 -->
+        <div class="setting-row">
+          <div class="setting-label">템포</div>
+          <div class="setting-control tempo-control">
+            <div class="counter">
+              <button class="counter-btn" id="tempo-minus" aria-label="템포 감소">−</button>
+              <span class="counter-value">♩=<span id="tempo-value">76</span></span>
+              <button class="counter-btn" id="tempo-plus" aria-label="템포 증가">+</button>
+            </div>
+            <input type="range" id="tempo-slider" min="40" max="200" value="76" class="slider">
+            <div class="tempo-note">원본 ♩=<span id="tempo-original-display">76</span></div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 손 -->
+        <div class="setting-row">
+          <div class="setting-label">손</div>
+          <div class="setting-control">
+            <div class="toggle-group" id="hand-toggle">
+              <button class="toggle-btn active" data-value="both">양손</button>
+              <button class="toggle-btn" data-value="right">오른손</button>
+              <button class="toggle-btn" data-value="left">왼손</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 반복 -->
+        <div class="setting-row">
+          <div class="setting-label">반복</div>
+          <div class="setting-control">
+            <div class="counter">
+              <button class="counter-btn" id="repeat-minus" aria-label="반복 감소">−</button>
+              <span class="counter-value"><span id="repeat-value">1</span>회</span>
+              <button class="counter-btn" id="repeat-plus" aria-label="반복 증가">+</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 연주 시작 버튼 -->
+      <button class="start-btn" id="start-btn">▶ 연주 시작</button>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from './js/sidebar.js';
+    renderSidebar('practice', document.getElementById('sidebar'));
+  </script>
+  <script src="js/api.js"></script>
+  <script src="js/detail.js"></script>
+</body>
+</html>

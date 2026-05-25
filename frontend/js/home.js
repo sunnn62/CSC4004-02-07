@@ -33,7 +33,7 @@ const thumbSvg = `
   if (!grid) return;
 
   grid.innerHTML = myScores.map(s => `
-    <a href="play.html?scoreId=${s.id}" class="score-card">
+    <a href="detail.html?scoreId=${s.id}" class="score-card">
       <div class="score-thumb">${thumbSvg}</div>
       <div class="score-name">${s.title}</div>
       <div class="score-meta">${s.composer} · ♩=${s.tempo}</div>
