@@ -329,25 +329,70 @@ def element_pitches(element: music21.base.Music21Object) -> list[int]:
     return []
 
 
+def expand_score_repeats(
+    score: music21.stream.Score,
+) -> tuple[music21.stream.Score, bool]:
+    """
+    도돌이표/볼타(1st·2nd ending)/Da Capo/Dal Segno 를 실제 연주 순서대로 펼친다.
+
+    music21의 Expander가 펼칠 수 있는 형태인지 확인한 뒤 펼친 새 스코어를 반환한다.
+    펼치기 불가(복잡한 jump, 미지원 마크 등)면 원본을 그대로 돌려준다.
+
+    Returns:
+        (expanded_or_original_score, was_expanded)
+    """
+
+    try:
+        expander = music21.repeat.Expander(score)
+        if expander.isExpandable():
+            return expander.process(), True
+    except Exception:
+        # Expander 내부 예외는 펼치기 실패로 간주하고 원본 반환
+        pass
+    return score, False
+
+
 def parse_musicxml_to_json(
     xml_path: str | Path,
     *,
     overrides: MetadataOverrides | None = None,
     source_page: int | None = None,
     measure_offset: int = 0,
+    expand_repeats: bool = True,
 ) -> dict[str, Any]:
     """
     MusicXML 하나를 프론트엔드 채점용 JSON 구조로 변환한다.
 
     출력은 마디 단위이며, 각 note event에는 시작 박자, 길이, MIDI pitch,
     손 구분, 쉼표 여부 등이 들어간다.
+
+    expand_repeats=True(기본값)이면 도돌이표/볼타/D.C./D.S.를 실제 연주 순서로
+    펼친 뒤 JSON을 만든다. 같은 마디가 여러 번 등장할 경우, 각 등장마다 별도의
+    엔트리로 출력되며 `originalNumber`에 원본 악보 마디 번호가 보존된다.
     """
 
     xml_path = Path(xml_path)
     overrides = overrides or MetadataOverrides()
     score = music21.converter.parse(str(xml_path))
 
+    was_expanded = False
+    if expand_repeats:
+        score, was_expanded = expand_score_repeats(score)
+
     metadata, warnings = extract_metadata(score, xml_path, overrides)
+    metadata["repeatsExpanded"] = was_expanded
+
+    if expand_repeats and not was_expanded:
+        # 사용자에게 펼치기 실패 사실을 알린다. 도돌이 없는 곡이면 정상이지만,
+        # 도돌이가 있는데 실패한 경우 OMR 오인식이나 복잡한 jump일 수 있다.
+        warnings.append(
+            ParseWarning(
+                "REPEATS_NOT_EXPANDED",
+                "Repeats were not expanded (no repeats found, or score contains unsupported jumps).",
+                "info",
+            )
+        )
+
     measures_map: dict[int, list[dict[str, Any]]] = {}
     measure_info_map: dict[int, dict[str, Any]] = {}
 
@@ -362,35 +407,54 @@ def parse_musicxml_to_json(
         "fff": 127,
     }
 
-    for part_index, part in enumerate(score.parts):
-        for measure in part.getElementsByClass(music21.stream.Measure):
-            if measure.number is None:
-                continue
+    # 펼친 뒤에는 같은 원본 마디 번호가 여러 번 등장하므로,
+    # play_index(연주 순서)를 직접 매겨서 키로 사용한다.
+    parts = list(score.parts)
+    measure_lists = [list(part.getElementsByClass(music21.stream.Measure)) for part in parts]
+    total_play_measures = max((len(ml) for ml in measure_lists), default=0)
 
-            measure_number = int(measure.number) + measure_offset
+    for play_index in range(total_play_measures):
+        play_number = play_index + 1 + measure_offset
+
+        # 원본 마디 번호: 어느 파트든 먼저 발견되는 measure.number를 사용
+        original_number = None
+        for measure_list in measure_lists:
+            if play_index < len(measure_list):
+                m = measure_list[play_index]
+                if m.number is not None:
+                    original_number = int(m.number)
+                    break
+
+        measures_map[play_number] = []
+        measure_info_map[play_number] = {
+            "originalNumber": original_number if original_number is not None else play_number,
+            "repeatStart": False,
+            "repeatEnd": False,
+            "dynamics": [],
+            "pedals": [],
+            "tempos": [],
+        }
+
+        for part_index, measure_list in enumerate(measure_lists):
+            if play_index >= len(measure_list):
+                continue
+            measure = measure_list[play_index]
             measure_absolute_offset = float(measure.offset)
 
-            if measure_number not in measures_map:
-                measures_map[measure_number] = []
-                measure_info_map[measure_number] = {
-                    "repeatStart": False,
-                    "repeatEnd": False,
-                    "dynamics": [],
-                    "pedals": [],
-                    "tempos": [],
-                }
-
-            if isinstance(measure.leftBarline, music21.bar.Repeat) and measure.leftBarline.direction == "start":
-                measure_info_map[measure_number]["repeatStart"] = True
-            if isinstance(measure.rightBarline, music21.bar.Repeat) and measure.rightBarline.direction == "end":
-                measure_info_map[measure_number]["repeatEnd"] = True
+            # 펼친 경우 도돌이 마크는 의미가 없으므로 false 유지.
+            # 펼치지 못한 경우에만 원본 도돌이 정보를 보존한다.
+            if not was_expanded:
+                if isinstance(measure.leftBarline, music21.bar.Repeat) and measure.leftBarline.direction == "start":
+                    measure_info_map[play_number]["repeatStart"] = True
+                if isinstance(measure.rightBarline, music21.bar.Repeat) and measure.rightBarline.direction == "end":
+                    measure_info_map[play_number]["repeatEnd"] = True
 
             for tempo_mark in measure.recurse().getElementsByClass(music21.tempo.MetronomeMark):
                 bpm = float(tempo_mark.number) if tempo_mark.number else None
                 if bpm is None and not tempo_mark.text:
                     continue
                 absolute_beat = float(measure_absolute_offset + tempo_mark.offset)
-                measure_info_map[measure_number]["tempos"].append(
+                measure_info_map[play_number]["tempos"].append(
                     {
                         "bpm": bpm,
                         "text": tempo_mark.text or None,
@@ -401,7 +465,7 @@ def parse_musicxml_to_json(
 
             for dynamic in measure.recurse().getElementsByClass(music21.dynamics.Dynamic):
                 absolute_beat = float(measure_absolute_offset + dynamic.offset)
-                measure_info_map[measure_number]["dynamics"].append(
+                measure_info_map[play_number]["dynamics"].append(
                     {
                         "mark": dynamic.value,
                         "targetVelocity": dynamic_to_velocity.get(dynamic.value, 80),
@@ -418,7 +482,7 @@ def parse_musicxml_to_json(
                         or getattr(pedal, "pedalForm", None)
                         or "start"
                     )
-                    measure_info_map[measure_number]["pedals"].append(
+                    measure_info_map[play_number]["pedals"].append(
                         {
                             "type": pedal_type,
                             "startBeat": float(pedal.offset),
@@ -442,7 +506,8 @@ def parse_musicxml_to_json(
                 note_event = {
                     "id": "",
                     "sourcePage": source_page,
-                    "measure": measure_number,
+                    "measure": play_number,
+                    "originalMeasure": measure_info_map[play_number]["originalNumber"],
                     "pitches": element_pitches(element),
                     "duration": float(element.duration.quarterLength),
                     "startBeat": float(element.offset),
@@ -454,23 +519,24 @@ def parse_musicxml_to_json(
                     "isGrace": bool(element.duration.isGrace),
                     "articulations": articulations,
                 }
-                measures_map[measure_number].append(note_event)
+                measures_map[play_number].append(note_event)
 
     output_measures: list[dict[str, Any]] = []
     note_counter = 1
-    for measure_number in sorted(measures_map):
+    for play_number in sorted(measures_map):
         notes = sorted(
-            measures_map[measure_number],
+            measures_map[play_number],
             key=lambda item: (item["absoluteStartBeat"], 0 if item["hand"] == "right" else 1, item["pitches"]),
         )
         for note in notes:
             note["id"] = f"n{note_counter}"
             note_counter += 1
 
-        info = measure_info_map[measure_number]
+        info = measure_info_map[play_number]
         output_measures.append(
             {
-                "number": measure_number,
+                "number": play_number,
+                "originalNumber": info["originalNumber"],
                 "repeatStart": info["repeatStart"],
                 "repeatEnd": info["repeatEnd"],
                 "tempos": sorted(info["tempos"], key=lambda item: item["absoluteStartBeat"]),
@@ -626,6 +692,7 @@ def to_frontend_schema(data: dict[str, Any], *, include_diagnostics: bool = Fals
             "tempo": metadata["tempo"],
             "timeSignature": metadata["timeSignature"],
             "keySignature": metadata["keySignature"],
+            "repeatsExpanded": metadata.get("repeatsExpanded", False),
         },
         "tempoMap": [],
         "measures": [],
@@ -639,6 +706,7 @@ def to_frontend_schema(data: dict[str, Any], *, include_diagnostics: bool = Fals
 
         output_measure = {
             "number": measure["number"],
+            "originalNumber": measure.get("originalNumber", measure["number"]),
             "startBeat": 0.0,
             "endBeat": 0.0,
             "repeatStart": measure["repeatStart"],
@@ -743,6 +811,9 @@ def merge_page_json(page_results: list[dict[str, Any]], overrides: MetadataOverr
         for measure in page_result["measures"]:
             copied_measure = dict(measure)
             copied_measure["number"] = next_measure_number
+            # originalNumber는 페이지별 파싱에서 이미 부여됐으면 그대로 보존,
+            # 없으면 새 연속 번호를 fallback으로 쓴다.
+            copied_measure["originalNumber"] = measure.get("originalNumber", next_measure_number)
 
             for event_key in ("tempos", "dynamics", "pedals"):
                 copied_measure[event_key] = [
@@ -758,6 +829,7 @@ def merge_page_json(page_results: list[dict[str, Any]], overrides: MetadataOverr
                 copied_note = dict(note)
                 copied_note["id"] = f"n{next_note_id}"
                 copied_note["measure"] = copied_measure["number"]
+                copied_note["originalMeasure"] = copied_measure["originalNumber"]
                 copied_note["absoluteStartBeat"] = note["absoluteStartBeat"] + beat_offset
                 next_note_id += 1
                 copied_notes.append(copied_note)
@@ -781,12 +853,16 @@ def parse_score_file(
     dpi: int = 220,
     use_cache: bool = True,
     include_diagnostics: bool = False,
+    expand_repeats: bool = True,
 ) -> dict[str, Any]:
     """
     외부에서 호출할 메인 함수.
 
     입력 파일 형식에 따라 MusicXML 직접 파싱 경로와 PDF/이미지 OMR 경로로 나뉜다.
     결과는 output_json_path에 저장하고, 같은 조건으로 다시 호출하면 캐시를 재사용한다.
+
+    expand_repeats=True(기본값)이면 도돌이표/볼타/D.C./D.S.를 펼쳐서 실제 연주
+    순서대로 마디를 출력한다. 프론트엔드가 런타임에 도돌이를 계산하지 않아도 된다.
     """
 
     input_path = Path(input_path)
@@ -805,6 +881,7 @@ def parse_score_file(
                 "max_omr_pages": max_omr_pages,
                 "dpi": dpi,
                 "include_diagnostics": include_diagnostics,
+                "expand_repeats": expand_repeats,
             },
             sort_keys=True,
         ).encode("utf-8")
@@ -820,7 +897,11 @@ def parse_score_file(
     suffix = input_path.suffix.lower()
     if suffix in SUPPORTED_MUSICXML_EXTENSIONS:
         # 이미 구조화된 악보 파일이면 Oemer 없이 바로 파싱한다. 서비스에서 가장 빠른 경로다.
-        internal_data = parse_musicxml_to_json(input_path, overrides=overrides)
+        internal_data = parse_musicxml_to_json(
+            input_path,
+            overrides=overrides,
+            expand_repeats=expand_repeats,
+        )
     elif suffix == ".pdf" or suffix in SUPPORTED_IMAGE_EXTENSIONS:
         # 이미지 계열은 전처리 -> Oemer -> MusicXML -> JSON 순서로 처리한다.
         pages_dir = work_dir / "processed_pages"
@@ -834,6 +915,7 @@ def parse_score_file(
                 xml_path,
                 overrides=overrides,
                 source_page=page_index,
+                expand_repeats=expand_repeats,
             )
             page_results.append(page_data)
 
@@ -862,6 +944,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--no-cache", action="store_true")
     parser.add_argument("--include-diagnostics", action="store_true")
+    parser.add_argument(
+        "--no-expand-repeats",
+        action="store_true",
+        help="도돌이표/볼타/D.C./D.S.를 펼치지 않고 원본 마디 구조를 유지한다.",
+    )
     return parser
 
 
@@ -884,9 +971,11 @@ def main() -> None:
         dpi=args.dpi,
         use_cache=not args.no_cache,
         include_diagnostics=args.include_diagnostics,
+        expand_repeats=not args.no_expand_repeats,
     )
     print(f"Saved JSON: {args.output}")
     print(f"Measures: {len(data.get('measures', []))}")
+    print(f"Repeats expanded: {data.get('metadata', {}).get('repeatsExpanded', False)}")
     diagnostics = data.get("diagnostics", {})
     print(f"Warnings: {len(diagnostics.get('warnings', []))}")
 

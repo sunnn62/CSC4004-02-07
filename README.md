@@ -181,6 +181,7 @@ data = parse_score_file(
 | `--dpi` | `220` | PDF→이미지 변환 해상도 |
 | `--no-cache` | — | 캐시 무시하고 재처리 |
 | `--include-diagnostics` | — | warnings 등 진단 정보 JSON 포함 |
+| `--no-expand-repeats` | — | 도돌이표/볼타/D.C./D.S.를 펼치지 않고 원본 구조 유지 |
 
 ---
 
@@ -193,6 +194,7 @@ data = parse_score_file(
     "tempo": 100.0,
     "timeSignature": "4/4",
     "keySignature": "D major",
+    "repeatsExpanded": true,
     "totalBeats": 200.0,
     "estimatedDurationSec": 120.0
   },
@@ -202,6 +204,7 @@ data = parse_score_file(
   "measures": [
     {
       "number": 1,
+      "originalNumber": 1,
       "startBeat": 0.0,
       "endBeat": 4.0,
       "repeatStart": false,
@@ -234,18 +237,70 @@ data = parse_score_file(
 
 ### develop 스키마 대비 추가 필드
 
-이전 `develop` 브랜치에 있던 스키마를 포함하면서, 비교에 유용한 필드 7개를 추가로 생성합니다. 기존 필드는 그대로이므로 호환성 문제는 없습니다.
+이전 `develop` 브랜치에 있던 스키마를 포함하면서, 비교·렌더링에 유용한 필드를 추가로 생성합니다. 기존 필드는 그대로이므로 호환성 문제는 없습니다.
 
 | # | 추가 필드 | 위치 | 타입 | 용도 |
 |---|----------|------|------|------|
 | 1 | `tempoMap` | 최상위 | `array` | 곡 전체의 BPM 변화 지점 모음. 프론트엔드 타이머가 가속·감속할 때 사용 |
 | 2 | `metadata.totalBeats` | metadata | `float` | 곡 전체 총 박자 수. 진행률(progress bar) 계산용 |
 | 3 | `metadata.estimatedDurationSec` | metadata | `float` | 추정 재생 시간(초). 곡 소요 시간 표시용 |
-| 4 | `measure.startBeat` / `endBeat` | measure | `float` | 마디 시작·끝 박자(절대값). 마디 단위 시간 분석에 사용 |
-| 5 | `note.pitchNames` | note | `string[]` | MIDI 번호를 사람이 읽는 이름으로 (`60` → `"C4"`). 결과 화면 표시용 |
-| 6 | `note.absoluteEndBeat` | note | `float` | `absoluteStartBeat + duration`. 박자 판정 윈도우 계산용 |
-| 7 | **`note.shouldPlay`** | note | `bool` | 실제로 타건해야 하는 음표인지 여부 |
-| 8 | **`note.onsetId`** | note | `string\|null` | 동시 타건 묶음 식별자 (화음·양손 동시) |
+| 4 | **`metadata.repeatsExpanded`** | metadata | `bool` | 도돌이표/볼타/D.C./D.S. 펼치기 성공 여부 |
+| 5 | `measure.startBeat` / `endBeat` | measure | `float` | 마디 시작·끝 박자(절대값). 마디 단위 시간 분석에 사용 |
+| 6 | **`measure.originalNumber`** | measure | `int` | 펼치기 전 원본 악보 마디 번호 |
+| 7 | `note.pitchNames` | note | `string[]` | MIDI 번호를 사람이 읽는 이름으로 (`60` → `"C4"`). 결과 화면 표시용 |
+| 8 | `note.absoluteEndBeat` | note | `float` | `absoluteStartBeat + duration`. 박자 판정 윈도우 계산용 |
+| 9 | **`note.shouldPlay`** | note | `bool` | 실제로 타건해야 하는 음표인지 여부 |
+| 10 | **`note.onsetId`** | note | `string\|null` | 동시 타건 묶음 식별자 (화음·양손 동시) |
+| 11 | **`note.originalMeasure`** | note | `int` | 음표가 속한 원본 악보 마디 번호 |
+
+### 🔁 도돌이표 펼치기 (Repeats Expansion)
+
+기본값(`expand_repeats=True`)에서 **도돌이표·볼타(1st/2nd ending)·Da Capo·Dal Segno를 실제 연주 순서대로 펼친 JSON**을 출력합니다. 프론트엔드가 런타임에 jump 로직을 계산하지 않아도 됩니다.
+
+#### 동작
+
+- `measure.number` = **연주 순서** (1, 2, 3, 4, 5, 6 … 진행되는 순서)
+- `measure.originalNumber` = **악보상 마디 번호** (1, 2, 3, 2, 3, 4 처럼 중복 가능)
+- 펼친 경우 `measure.repeatStart` / `repeatEnd` 는 항상 `false`
+- `metadata.repeatsExpanded` 가 `true` 이면 펼치기 성공
+
+#### 예시 (마디 2~3을 한 번 도돌이)
+
+```json
+"measures": [
+  { "number": 1, "originalNumber": 1, ... },
+  { "number": 2, "originalNumber": 2, ... },
+  { "number": 3, "originalNumber": 3, ... },
+  { "number": 4, "originalNumber": 2, ... },  // 도돌이 2회차
+  { "number": 5, "originalNumber": 3, ... },
+  { "number": 6, "originalNumber": 4, ... }
+]
+```
+
+#### 프론트엔드 사용 가이드
+
+- **악보 진행**: `measures` 배열 순서대로 진행 (`number` 기준)
+- **결과 화면**: "가장 많이 틀린 마디"는 `originalNumber` 로 그룹핑 → 사용자에게는 악보상 번호로 표시
+- **재시도/구간 반복**: `number` 로 정확한 등장 위치 지정
+
+#### 펼치기를 끄려면
+
+```bash
+python score_pipeline.py score.musicxml -o out.json --no-expand-repeats
+```
+
+- `metadata.repeatsExpanded: false`
+- `measure.repeatStart` / `repeatEnd` 가 원본 그대로 노출됨
+
+#### 펼치기 실패 케이스
+
+다음 경우 자동으로 펼치기 없이 진행 (`repeatsExpanded: false`, `warnings`에 `REPEATS_NOT_EXPANDED`):
+
+- 도돌이가 없는 곡 (정상 동작)
+- Oemer가 도돌이/D.C./D.S. 마크를 인식하지 못한 경우
+- 복잡한 jump 구조 (music21 Expander가 처리 불가)
+
+> **권장**: MusicXML 직접 입력(.musicxml/.xml/.mxl) 시 펼치기 거의 100% 성공. OMR 경로는 도돌이 검출이 불안정할 수 있음.
 
 ### ⚠️ MIDI 비교 파트 필독
 
@@ -280,6 +335,7 @@ data = parse_score_file(
 | `CHECK_TEMPO` | 템포가 기본값 120 | 원본 악보와 대조 |
 | `NO_MEASURES` | 마디 미탐지 (오류 수준) | 입력 파일 및 품질 확인 |
 | `NO_NOTES` | 음표 미탐지 (오류 수준) | 입력 파일 및 품질 확인 |
+| `REPEATS_NOT_EXPANDED` | 도돌이 펼치기 미수행 (정보) | 도돌이 없는 곡이면 정상. 있는데 실패면 MusicXML 입력 권장 |
 
 ---
 
@@ -308,7 +364,7 @@ data = parse_score_file(
 | 음자리표(clef) | JSON 에 미포함 |
 | 임시표(accidental) | JSON 에 미포함 |
 | 박자표 변경 추적 | 곡 중간 박자표 변경 시 beat offset 오차 발생 가능 |
-| Da capo / Dal segno | 미지원; `repeatStart/repeatEnd` 플래그만 제공 |
+| Da capo / Dal segno | MusicXML 입력에서 자동 펼치기 지원 (OMR 입력은 검출률 낮음) |
 | 멀티 페이지 경계 보정 | 페이지 경계 마디에서 사소한 오차 가능 |
 | 페달 정보 | music21 버전에 따라 추출 안 될 수 있음 (빈 배열 반환) |
 
