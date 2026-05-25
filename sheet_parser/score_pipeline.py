@@ -52,6 +52,10 @@ class MetadataOverrides:
     key_fifths: int | None = None
     key_name: str | None = None
 
+    def __post_init__(self) -> None:
+        if self.tempo is not None and self.tempo <= 0:
+            raise ValueError(f"tempo must be a positive number, got {self.tempo}")
+
 
 @dataclass
 class ParseWarning:
@@ -260,6 +264,16 @@ def extract_metadata(
         tempo = float(tempo_marks[0].number)
     if tempo is None:
         tempo = read_musicxml_sound_tempo(xml_path)
+    # 0이나 음수 BPM은 계산 오류를 일으키므로 기본값으로 대체한다.
+    if tempo is not None and tempo <= 0:
+        warnings.append(
+            ParseWarning(
+                "INVALID_TEMPO",
+                f"Detected tempo {tempo} BPM is invalid (must be positive). Defaulted to 120 BPM.",
+                "warning",
+            )
+        )
+        tempo = None
     if tempo is None:
         tempo = 120.0
         warnings.append(
@@ -672,7 +686,10 @@ def estimate_duration_seconds(total_beats: float, tempo_map: list[dict[str, Any]
         )
         if end <= start:
             continue
-        duration += (end - start) * 60.0 / float(tempo["bpm"])
+        bpm = float(tempo["bpm"])
+        if bpm <= 0:
+            continue  # 0이나 음수 BPM은 ZeroDivisionError 방지를 위해 건너뛴다
+        duration += (end - start) * 60.0 / bpm
 
     return round(duration, 3)
 
@@ -754,9 +771,16 @@ def to_frontend_schema(data: dict[str, Any], *, include_diagnostics: bool = Fals
     output["metadata"]["totalBeats"] = total_beats
     output["metadata"]["estimatedDurationSec"] = estimate_duration_seconds(total_beats, output["tempoMap"])
 
+    # error 수준 경고는 기본 응답에도 노출한다.
+    # NO_MEASURES, NO_NOTES 같이 severity="error"인 경우 빈 JSON이 그냥 통과하는 문제를 방지.
+    all_warnings = data.get("warnings", [])
+    error_warnings = [w for w in all_warnings if w.get("severity") == "error"]
+    output["hasErrors"] = len(error_warnings) > 0
+    output["errors"] = [w["code"] for w in error_warnings]
+
     if include_diagnostics:
         output["diagnostics"] = {
-            "warnings": data.get("warnings", []),
+            "warnings": all_warnings,
             "source": data.get("source", {}),
             "keyFifths": metadata.get("keyFifths"),
         }
@@ -895,6 +919,8 @@ def parse_score_file(
         return data
 
     suffix = input_path.suffix.lower()
+    pipeline_warnings: list[ParseWarning] = []
+
     if suffix in SUPPORTED_MUSICXML_EXTENSIONS:
         # 이미 구조화된 악보 파일이면 Oemer 없이 바로 파싱한다. 서비스에서 가장 빠른 경로다.
         internal_data = parse_musicxml_to_json(
@@ -906,6 +932,28 @@ def parse_score_file(
         # 이미지 계열은 전처리 -> Oemer -> MusicXML -> JSON 순서로 처리한다.
         pages_dir = work_dir / "processed_pages"
         xml_dir = work_dir / "musicxml"
+
+        # PDF 전체 페이지 수를 먼저 확인해서 페이지가 잘렸는지 알린다.
+        if suffix == ".pdf" and max_omr_pages is not None:
+            try:
+                from pdf2image import pdfinfo_from_path
+                info = pdfinfo_from_path(
+                    str(input_path),
+                    poppler_path=str(DEFAULT_POPPLER_PATH) if DEFAULT_POPPLER_PATH.exists() else None,
+                )
+                total_pdf_pages = int(info.get("Pages", 0))
+                if total_pdf_pages > max_omr_pages:
+                    pipeline_warnings.append(
+                        ParseWarning(
+                            "PAGES_TRUNCATED",
+                            f"PDF has {total_pdf_pages} pages but only {max_omr_pages} page(s) were processed. "
+                            f"Pass --max-omr-pages {total_pdf_pages} (or a higher value) to process the full score.",
+                            "warning",
+                        )
+                    )
+            except Exception:
+                pass  # pdfinfo 실패는 무시, 파싱은 계속 진행
+
         page_paths = preprocess_score_file(input_path, pages_dir, dpi=dpi, max_pages=max_omr_pages)
         xml_paths = run_oemer_on_pages(page_paths, xml_dir, max_pages=max_omr_pages)
 
@@ -922,6 +970,11 @@ def parse_score_file(
         internal_data = merge_page_json(page_results, overrides)
     else:
         raise ValueError(f"Unsupported score file type: {suffix}")
+
+    # 파이프라인 전체 경고를 내부 데이터에 합산한다.
+    if pipeline_warnings:
+        internal_data.setdefault("warnings", [])
+        internal_data["warnings"] = [asdict(w) for w in pipeline_warnings] + internal_data["warnings"]
 
     data = to_frontend_schema(internal_data, include_diagnostics=include_diagnostics)
     cache_path.parent.mkdir(parents=True, exist_ok=True)
