@@ -16,7 +16,6 @@ const state = {
   scoreId,
   originalTempo: 76,
   tempo: 76,
-  hand: 'both',
   repeat: 1,
 };
 
@@ -65,13 +64,6 @@ document.getElementById('tempo-minus').addEventListener('click', () => setTempo(
 document.getElementById('tempo-plus').addEventListener('click', () => setTempo(state.tempo + 1));
 document.getElementById('tempo-slider').addEventListener('input', (e) => setTempo(parseInt(e.target.value, 10)));
 
-// ───── 7. 손 토글 ─────
-document.getElementById('hand-toggle').addEventListener('click', (e) => {
-  const btn = e.target.closest('.toggle-btn');
-  if (!btn) return;
-  state.hand = btn.dataset.value;
-  document.querySelectorAll('#hand-toggle .toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
-});
 
 // ───── 8. 반복 카운터 ─────
 function setRepeat(v) {
@@ -91,7 +83,6 @@ document.getElementById('start-btn').addEventListener('click', () => {
     scoreId: state.scoreId,
     tempo: state.tempo,
     originalTempo: state.originalTempo,
-    hand: state.hand,
     repeat: state.repeat,
   }));
   window.location.href = `play.html?scoreId=${state.scoreId}`;
