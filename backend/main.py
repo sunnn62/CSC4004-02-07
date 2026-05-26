@@ -221,10 +221,14 @@ async def _run_pipeline(
     if title is not None:
         cmd += ["--title", title]
     try:
+        env = os.environ.copy()
+        conda_bin = Path(sys.executable).parent / "Library" / "bin"
+        if conda_bin.exists():
+            env["PATH"] = str(conda_bin) + os.pathsep + env.get("PATH", "")
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
-            partial(subprocess.run, cmd, capture_output=True, text=True),
+            partial(subprocess.run, cmd, capture_output=True, text=True, env=env),
         )
         if result.returncode != 0:
             print(f"[pipeline ERROR] score_id={score_id}")
