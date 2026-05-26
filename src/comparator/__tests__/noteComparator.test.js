@@ -171,40 +171,72 @@ describe('박자 판정 (BPM 60, 1박=1000ms, 허용±200ms)', () => {
   });
 });
 
-describe('긴 멈춤 → 마디 리셋', () => {
-  it('2초 이상 간격 → onMeasureReset 호출 + 커서 마디 처음으로', () => {
+describe('일시정지 재개 후 박자 면제', () => {
+  it('resumeAfterPause() 호출 후 첫 음은 박자 판정 면제(null)', () => {
+    const score = makeScore([note('n1', [60], 0), note('n2', [62], 1)]);
+    const c = new NoteComparator(score, { toleranceMs: 200 });
+    const timings = [];
+    c.onResult = (id, pitch, timing) => timings.push(timing);
+
+    c.onChord([60], 80, 0);        // n1: 첫 음 → null
+    c.resumeAfterPause();          // 일시정지 재개 시뮬레이션
+    c.onChord([62], 80, 5000);     // n2: 재개 직후 → 면제(null)
+    expect(timings[1]).toBeNull();
+  });
+
+  it('resumeAfterPause() 이후 두 번째 음부터 정상 판정', () => {
     const score = makeScore([
       note('n1', [60], 0),
       note('n2', [62], 1),
       note('n3', [64], 2),
     ]);
-    const c = new NoteComparator(score, { pauseThresholdMs: 2000 });
-    const resets = [];
-    c.onMeasureReset = (m) => resets.push(m);
-    const results = [];
-    c.onResult = (id) => results.push(id);
-
-    c.onChord([60], 80, 0);      // n1 판정
-    c.onChord([62], 80, 1000);   // n2 판정
-    // 3초 후 → 멈춤 감지 → 마디 1 처음으로 리셋
-    c.onChord([64], 80, 4000);
-
-    expect(resets).toEqual([1]);
-    // 리셋 후 cursor는 n1로 돌아감 → 이번 입력은 무시됨
-    expect(c._cursor).toBe(0);
-  });
-
-  it('리셋 후 첫 음은 박자 판정 면제', () => {
-    const score = makeScore([note('n1', [60], 0), note('n2', [62], 1)]);
-    const c = new NoteComparator(score, { pauseThresholdMs: 2000 });
+    const c = new NoteComparator(score, { toleranceMs: 200 });
     const timings = [];
     c.onResult = (id, pitch, timing) => timings.push(timing);
 
+    c.onChord([60], 80, 0);       // n1: 첫 음 → null
+    c.resumeAfterPause();
+    c.onChord([62], 80, 5000);    // n2: 재개 직후 → null
+    c.onChord([64], 80, 6000);    // n3: 재개 후 1000ms → 정확
+    expect(timings[2]).toBe('정확');
+  });
+});
+
+describe('재생 속도 배율 (setSpeed)', () => {
+  it('0.5배속: 기대 간격이 2배 → 실제 2000ms는 정확', () => {
+    const score = makeScore([note('n1', [60], 0), note('n2', [62], 1)]);
+    const c = new NoteComparator(score, { toleranceMs: 200, speedMultiplier: 0.5 });
+    const timings = [];
+    c.onResult = (id, pitch, timing) => timings.push(timing);
+
+    // BPM 60, 0.5배속 → 유효 BPM 30 → 1박 기대 간격 2000ms
     c.onChord([60], 80, 0);
-    c.onChord([62], 80, 5000); // 멈춤 → 리셋
-    // 리셋 후 다시 처음부터
-    c.onChord([60], 80, 5100); // 마디 첫 음 → 박자 면제
-    expect(timings[timings.length - 1]).toBeNull();
+    c.onChord([62], 80, 2000); // 정확히 2배속 기대 간격
+    expect(timings[1]).toBe('정확');
+  });
+
+  it('2배속: 기대 간격이 절반 → 실제 500ms는 정확', () => {
+    const score = makeScore([note('n1', [60], 0), note('n2', [62], 1)]);
+    const c = new NoteComparator(score, { toleranceMs: 200, speedMultiplier: 2.0 });
+    const timings = [];
+    c.onResult = (id, pitch, timing) => timings.push(timing);
+
+    // BPM 60, 2배속 → 유효 BPM 120 → 1박 기대 간격 500ms
+    c.onChord([60], 80, 0);
+    c.onChord([62], 80, 500); // 정확히 2배속 기대 간격
+    expect(timings[1]).toBe('정확');
+  });
+
+  it('setSpeed()로 런타임 변경 가능', () => {
+    const score = makeScore([note('n1', [60], 0), note('n2', [62], 1)]);
+    const c = new NoteComparator(score, { toleranceMs: 200 });
+    const timings = [];
+    c.onResult = (id, pitch, timing) => timings.push(timing);
+
+    c.setSpeed(0.5); // 반속으로 변경
+    c.onChord([60], 80, 0);
+    c.onChord([62], 80, 2000); // 반속 기대 간격(2000ms)에 맞게 침
+    expect(timings[1]).toBe('정확');
   });
 });
 

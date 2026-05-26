@@ -3,23 +3,17 @@
  *
  * 전략: 절대 간격 기준
  *  - JSON의 tempo(BPM)와 absoluteStartBeat로 "기대 타임스탬프"를 ms 단위로 계산
+ *  - speedMultiplier로 재생 속도 배율 적용 (0.5 = 반속, 2.0 = 2배속)
  *  - 실제 연주 타임스탬프와 비교해 오차가 허용 범위 내면 '정확'
  *  - 범위 초과 시 방향에 따라 '빠름' / '느림'
- *
- * 마디 리셋 흐름:
- *  - 긴 멈춤(PAUSE_THRESHOLD_MS 초과) 감지 시 상위 모듈(NoteComparator)에 알림
- *  - NoteComparator가 마디 처음으로 커서를 되돌리고 기준 타임스탬프를 초기화
  */
 
 export const TIMING_RESULT = {
   ACCURATE: '정확',
   FAST: '빠름',
   SLOW: '느림',
-  SKIP: null, // 판정 면제 (첫 음, 꾸밈음, 멈춤 직후)
+  SKIP: null, // 판정 면제 (첫 음, 꾸밈음, 일시정지 재개 직후)
 };
-
-// 멈춤 판단 기준: 이 시간 이상 간격이 벌어지면 멈춤으로 간주
-export const PAUSE_THRESHOLD_MS = 2000;
 
 // 기본 허용 오차 (ms). 난이도 설정으로 외부에서 주입 가능
 const DEFAULT_TOLERANCE_MS = 200;
@@ -46,15 +40,21 @@ export function getBpmAt(absoluteBeat, measures, defaultBpm) {
 /**
  * 두 음표 사이의 기대 간격(ms)을 계산
  *
+ * speedMultiplier 예시:
+ *  - 1.0 → 원래 속도 (BPM 그대로)
+ *  - 0.5 → 반속 (BPM이 절반이므로 기대 간격 2배)
+ *  - 2.0 → 2배속 (BPM이 2배이므로 기대 간격 절반)
+ *
  * @param {Object} prevNote
  * @param {Object} currNote
  * @param {Object[]} measures
  * @param {number} defaultBpm
+ * @param {number} [speedMultiplier=1.0] - 재생 속도 배율
  */
-export function expectedIntervalMs(prevNote, currNote, measures, defaultBpm) {
+export function expectedIntervalMs(prevNote, currNote, measures, defaultBpm, speedMultiplier = 1.0) {
   const bpm = getBpmAt(currNote.absoluteStartBeat, measures, defaultBpm);
   const beatDiff = currNote.absoluteStartBeat - prevNote.absoluteStartBeat;
-  return (beatDiff * 60000) / bpm;
+  return (beatDiff * 60000) / (bpm * speedMultiplier);
 }
 
 /**
