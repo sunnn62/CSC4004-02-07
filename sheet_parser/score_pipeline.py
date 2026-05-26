@@ -17,6 +17,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass
@@ -33,13 +34,21 @@ _PEDAL_MARK_CLS: type | None = getattr(music21.expressions, "PedalMark", None)
 
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg"}
 SUPPORTED_MUSICXML_EXTENSIONS = {".musicxml", ".xml", ".mxl"}
-DEFAULT_POPPLER_PATH = (
+_DEFAULT_POPPLER_PATH = (
     Path(__file__).resolve().parent
     / "poppler"
     / "poppler-26.02.0"
     / "Library"
     / "bin"
 )
+_CONDA_POPPLER_PATH = Path(sys.executable).parent / "Library" / "bin"
+
+if _DEFAULT_POPPLER_PATH.exists():
+    DEFAULT_POPPLER_PATH = _DEFAULT_POPPLER_PATH
+elif (_CONDA_POPPLER_PATH / "pdftoppm.exe").exists():
+    DEFAULT_POPPLER_PATH = _CONDA_POPPLER_PATH
+else:
+    DEFAULT_POPPLER_PATH = None
 
 
 @dataclass

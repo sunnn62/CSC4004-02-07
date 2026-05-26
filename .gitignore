@@ -31,6 +31,9 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Poppler binaries (Windows — 수동 설치)
+sheet_parser/poppler/
+
 # Backend uploads & generated data (keep directory structure via .gitkeep)
 backend/uploads/*
 !backend/uploads/.gitkeep
