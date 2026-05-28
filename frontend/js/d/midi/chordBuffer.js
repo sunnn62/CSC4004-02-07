@@ -21,6 +21,14 @@ export class ChordBuffer {
     this._timer = setTimeout(() => this._flush(), this.windowMs);
   }
 
+  /** 대기 중인 화음 버퍼를 취소하고 버퍼를 비운다 (일시정지 시 사용) */
+  cancel() {
+    clearTimeout(this._timer);
+    this._timer = null;
+    this._buffer = [];
+    this._timestamp = null;
+  }
+
   _flush() {
     if (this._buffer.length === 0) return;
     const notes = this._buffer.map((b) => b.note);

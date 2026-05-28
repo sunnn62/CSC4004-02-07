@@ -2,51 +2,45 @@
  * 핵심 비교 엔진
  *
  * 상태 흐름:
- *  idle → playing → (긴 멈춤 감지) → measureReset → playing → ...
+ *  idle → playing → (일시정지) → paused → (재개) → playing → ...
  *
- * 마디 리셋 동작:
- *  긴 멈춤(PAUSE_THRESHOLD_MS) 감지 시 현재 마디의 첫 음표로 cursor를 되돌린다.
- *  기준 타임스탬프(prevPlayedAt)도 초기화해 다음 음의 박자 판정을 면제한다.
+ * 일시정지/재개는 상위 MidiComparatorService가 관리한다.
+ *  - pause() : MIDI 입력 차단 + 화음 버퍼 취소
+ *  - resume(): resumeAfterPause() 호출 → 재개 직후 첫 음 박자 판정 면제
  *
  * 파트 C 연동:
  *  onResult(noteId, pitchResult, timingResult) 콜백으로 결과 전달
- *   - pitchResult: 'correct' | 'wrong'
+ *   - pitchResult : 'correct' | 'wrong'
  *   - timingResult: '정확' | '빠름' | '느림' | null (면제)
- *  onMeasureReset(measureNumber) 콜백으로 커서 리셋 알림
+ *  onFinish() 콜백으로 곡 완료 알림
  */
 
 import { buildPlayListFromScore } from './playListBuilder.js';
-import {
-  judgeTiming,
-  expectedIntervalMs,
-  PAUSE_THRESHOLD_MS,
-} from './timingJudge.js';
+import { judgeTiming, expectedIntervalMs } from './timingJudge.js';
 
 export class NoteComparator {
   /**
    * @param {Object} scoreJson - 백엔드 JSON 전체
    * @param {Object} [options]
-   * @param {number} [options.toleranceMs=200] - 박자 허용 오차(ms)
-   * @param {number} [options.pauseThresholdMs] - 멈춤 감지 기준(ms)
+   * @param {number} [options.toleranceMs=200]     - 박자 허용 오차(ms)
+   * @param {number} [options.speedMultiplier=1.0] - 재생 속도 배율 (0.5=반속, 2.0=2배속)
    */
   constructor(scoreJson, options = {}) {
     this._score = scoreJson;
     this._toleranceMs = options.toleranceMs ?? 200;
-    this._pauseThresholdMs = options.pauseThresholdMs ?? PAUSE_THRESHOLD_MS;
+    this._speedMultiplier = options.speedMultiplier ?? 1.0;
 
     const { playList, measureMap } = buildPlayListFromScore(scoreJson);
     this._playList = playList;
     this._measureMap = measureMap;
 
-    this._cursor = 0;        // playList 내 현재 인덱스
-    this._prevNote = null;   // 직전에 판정한 음표
-    this._prevPlayedAt = null; // 직전 타건 타임스탬프(ms)
-    this._timingSkipNext = false; // 다음 음 박자 판정 면제 플래그
+    this._cursor = 0;          // playList 내 현재 인덱스
+    this._prevNote = null;     // 직전에 판정한 음표
+    this._prevPlayedAt = null; // 직전 타건 타임스탬프(ms). null이면 박자 판정 면제
 
     // 파트 C 연동 콜백
-    this.onResult = null;       // (noteId, pitchResult, timingResult) => void
-    this.onMeasureReset = null; // (measureNumber) => void
-    this.onFinish = null;       // () => void
+    this.onResult = null;  // (noteId, pitchResult, timingResult) => void
+    this.onFinish = null;  // () => void
   }
 
   // ───────────────────────────── public API ──────────────────────────────
@@ -58,33 +52,26 @@ export class NoteComparator {
       return;
     }
 
-    // 긴 멈춤 → 현재 마디 처음으로 리셋
-    if (this._prevPlayedAt !== null) {
-      const gap = timestamp - this._prevPlayedAt;
-      if (gap >= this._pauseThresholdMs) {
-        this._resetToMeasureStart(timestamp);
-        return; // 리셋 후 이번 입력은 무시 (사용자가 다시 치도록)
-      }
-    }
-
     const expected = this._playList[this._cursor];
 
     // ── 음정 판정 ──
     const pitchResult = this._judgePitch(playedNotes, expected.pitches);
 
     // ── 박자 판정 ──
+    // 조건: 첫 음이 아니고(_prevNote !== null) 타임스탬프 기준이 있을 때(_prevPlayedAt !== null)
+    // _prevPlayedAt이 null인 경우: 곡 시작 첫 음 또는 일시정지 재개 직후 → 면제
     let timingResult = null;
-    if (!this._timingSkipNext && this._prevNote !== null) {
+    if (this._prevNote !== null && this._prevPlayedAt !== null) {
       const expMs = expectedIntervalMs(
         this._prevNote,
         expected,
         this._score.measures,
         this._score.metadata.tempo,
+        this._speedMultiplier,
       );
       const actMs = timestamp - this._prevPlayedAt;
       timingResult = judgeTiming(actMs, expMs, expected.isGrace, this._toleranceMs);
     }
-    this._timingSkipNext = false;
 
     // ── 상태 갱신 ──
     this._prevNote = expected;
@@ -99,12 +86,28 @@ export class NoteComparator {
     }
   }
 
-  /** 외부에서 연주 리셋 (곡 처음부터 다시) */
+  /** 곡 처음부터 다시 시작 */
   reset() {
     this._cursor = 0;
     this._prevNote = null;
     this._prevPlayedAt = null;
-    this._timingSkipNext = false;
+  }
+
+  /**
+   * 일시정지 후 재개 시 호출
+   * _prevPlayedAt을 초기화해 재개 직후 첫 음의 박자 판정을 면제한다.
+   * (커서·이전음표는 유지 — 진행 위치는 바뀌지 않음)
+   */
+  resumeAfterPause() {
+    this._prevPlayedAt = null;
+  }
+
+  /**
+   * 재생 속도 배율 변경
+   * @param {number} multiplier - 0.5=반속, 1.0=보통, 2.0=2배속
+   */
+  setSpeed(multiplier) {
+    this._speedMultiplier = multiplier;
   }
 
   get currentNote() {
@@ -121,34 +124,5 @@ export class NoteComparator {
     // 화음: 기대 음표 전부 포함되면 correct (여분 음 허용)
     const allMatch = expectedPitches.every((p) => playedNotes.includes(p));
     return allMatch ? 'correct' : 'wrong';
-  }
-
-  _resetToMeasureStart(timestamp) {
-    const currentNote = this._playList[this._cursor];
-    if (!currentNote) return;
-
-    const measureNumber = this._getMeasureNumber(currentNote);
-
-    // 해당 마디의 첫 타건 음표가 playList에서 어느 인덱스인지 찾기
-    const firstIdx = this._playList.findIndex(
-      (n) => this._getMeasureNumber(n) === measureNumber,
-    );
-    if (firstIdx === -1) return;
-
-    this._cursor = firstIdx;
-    this._prevNote = null;
-    this._prevPlayedAt = null;
-    this._timingSkipNext = true; // 마디 첫 음은 박자 판정 면제
-
-    this.onMeasureReset?.(measureNumber);
-  }
-
-  /** 음표가 속한 마디 번호를 반환 (measures 배열 순회) */
-  _getMeasureNumber(note) {
-    for (const measure of this._score.measures) {
-      const found = (measure.notes ?? []).some((n) => n.id === note.id);
-      if (found) return measure.number;
-    }
-    return null;
   }
 }
