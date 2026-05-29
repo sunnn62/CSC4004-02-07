@@ -56,30 +56,16 @@
       <h2 class="section-title">연주 설정</h2>
       <section class="settings-card">
 
-        <!-- 템포 -->
+        <!-- 배속 (기존 템포 slider/counter 자리에) -->
         <div class="setting-row">
-          <div class="setting-label">템포</div>
-          <div class="setting-control tempo-control">
-            <div class="counter">
-              <button class="counter-btn" id="tempo-minus" aria-label="템포 감소">−</button>
-              <span class="counter-value">♩=<span id="tempo-value">76</span></span>
-              <button class="counter-btn" id="tempo-plus" aria-label="템포 증가">+</button>
-            </div>
-            <input type="range" id="tempo-slider" min="40" max="200" value="76" class="slider">
-            <div class="tempo-note">원본 ♩=<span id="tempo-original-display">76</span></div>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- 손 -->
-        <div class="setting-row">
-          <div class="setting-label">손</div>
+          <div class="setting-label">배속</div>
           <div class="setting-control">
-            <div class="toggle-group" id="hand-toggle">
-              <button class="toggle-btn active" data-value="both">양손</button>
-              <button class="toggle-btn" data-value="right">오른손</button>
-              <button class="toggle-btn" data-value="left">왼손</button>
+            <div class="toggle-group" id="speed-toggle">
+              <button class="toggle-btn" data-speed="0.5">0.5×</button>
+              <button class="toggle-btn" data-speed="0.75">0.75×</button>
+              <button class="toggle-btn active" data-speed="1">1×</button>
+              <button class="toggle-btn" data-speed="1.25">1.25×</button>
+              <button class="toggle-btn" data-speed="1.5">1.5×</button>
             </div>
           </div>
         </div>

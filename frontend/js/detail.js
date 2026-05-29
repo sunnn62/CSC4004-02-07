@@ -14,8 +14,8 @@ async function loadScore(id) {
 // ───── 3. 상태 ─────
 const state = {
   scoreId,
-  originalTempo: 76,
-  tempo: 76,
+  originalTempo: 76,  // 표시용 (info-card)
+  speed: 1.0,         // ← tempo 대신 배속
   repeat: 1,
 };
 
@@ -27,9 +27,8 @@ function formatDuration(sec) {
 }
 
 function updateDurationDisplay() {
-  // 템포 비율로 예상 시간 재계산
-  const ratio = state.originalTempo / state.tempo;
-  const newDuration = state.baseDuration * ratio;
+  // 느리게(0.5×) → 시간 길어짐 / 빠르게(1.5×) → 짧아짐
+  const newDuration = state.baseDuration / state.speed;
   document.getElementById('duration').textContent = formatDuration(newDuration);
 }
 
@@ -40,30 +39,29 @@ function renderMetadata(data) {
   document.getElementById('song-composer').textContent = m.composer || '작곡자 미상';
   document.getElementById('time-signature').textContent = m.timeSignature;
   document.getElementById('key-signature').textContent = m.keySignature;
-  document.getElementById('original-tempo').textContent = m.tempo;
-  document.getElementById('tempo-original-display').textContent = m.tempo;
+  document.getElementById('original-tempo').textContent = m.tempo;  // 원본 템포는 표시만
 
   state.originalTempo = m.tempo;
-  state.tempo = m.tempo;
   state.baseDuration = m.estimatedDurationSec;
-
-  document.getElementById('tempo-value').textContent = m.tempo;
-  document.getElementById('tempo-slider').value = m.tempo;
   updateDurationDisplay();
+  // 기존 tempo-value, tempo-slider 관련 줄 삭제
 }
 
 // ───── 6. 템포 컨트롤 ─────
-function setTempo(v) {
-  const clamped = Math.max(40, Math.min(200, v));
-  state.tempo = clamped;
-  document.getElementById('tempo-value').textContent = clamped;
-  document.getElementById('tempo-slider').value = clamped;
+// setTempo(), tempo-minus/plus/slider 리스너 전부 삭제하고 ↓
+function setSpeed(v) {
+  state.speed = v;
+  document.querySelectorAll('#speed-toggle .toggle-btn').forEach(b =>
+    b.classList.toggle('active', parseFloat(b.dataset.speed) === v)
+  );
   updateDurationDisplay();
 }
-document.getElementById('tempo-minus').addEventListener('click', () => setTempo(state.tempo - 1));
-document.getElementById('tempo-plus').addEventListener('click', () => setTempo(state.tempo + 1));
-document.getElementById('tempo-slider').addEventListener('input', (e) => setTempo(parseInt(e.target.value, 10)));
 
+document.getElementById('speed-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('.toggle-btn');
+  if (!btn) return;
+  setSpeed(parseFloat(btn.dataset.speed));
+});
 
 // ───── 8. 반복 카운터 ─────
 function setRepeat(v) {
@@ -78,11 +76,9 @@ document.getElementById('repeat-plus').addEventListener('click', () => setRepeat
 
 // ───── 9. 연주 시작 ─────
 document.getElementById('start-btn').addEventListener('click', () => {
-  // 다음 화면(play.html)이 읽을 설정 저장
   sessionStorage.setItem('playSettings', JSON.stringify({
     scoreId: state.scoreId,
-    tempo: state.tempo,
-    originalTempo: state.originalTempo,
+    speedMultiplier: state.speed,   // ← tempo 대신 (D 옵션명과 일치!)
     repeat: state.repeat,
   }));
   window.location.href = `play.html?scoreId=${state.scoreId}`;

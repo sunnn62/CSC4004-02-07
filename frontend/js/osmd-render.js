@@ -1,3 +1,8 @@
+import { MidiComparatorService } from './d/MidiComparatorService.js';
+
+// D 서비스 인스턴스 (bootstrap에서 생성, 모달 핸들러에서 사용)
+let service = null;
+
 const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
   autoResize: true,
   drawTitle: false,   // 우리가 헤더에 직접 표시할 거라 OSMD 제목은 끔
@@ -298,16 +303,20 @@ function openPauseModal() {
 
   document.getElementById("pause-modal").classList.add("show");
   
-  // TODO: D 통합 시 midiService.pause() 같은 거 호출해서 입력 차단
+  service?.pause(); 
 }
 
 function closePauseModal() {
   document.getElementById("pause-modal").classList.remove("show");
-  // TODO: D 통합 시 midiService.resume() 호출
+  service?.resume();
 }
 
 // 기존 btn-pause 핸들러 교체
-document.getElementById("btn-pause")?.addEventListener("click", openPauseModal);
+document.getElementById("btn-restart")?.addEventListener("click", () => {
+  service?.restart();        
+  window.scoreView.reset();
+  closePauseModal();         // 이 안에서 resume() 호출됨
+});
 
 // 모달 안의 버튼들
 document.getElementById("btn-resume")?.addEventListener("click", closePauseModal);
@@ -318,7 +327,8 @@ document.getElementById("btn-restart")?.addEventListener("click", () => {
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
-  window.scoreView.showResultScreen();   // result.html로 이동
+  service?.stop();                       
+  window.scoreView.showResultScreen();
 });
 
 // === 시작 ===
@@ -329,6 +339,7 @@ async function bootstrap() {
   const useBackend = scoreId && scoreId.startsWith("mock-") === false && USE_MOCK === false;
   const scoreSource = useBackend ? api.getMusicXmlUrl(scoreId) : "assets/canon.mxl";
 
+  // 1) OSMD 악보 렌더링 (기존)
   try {
     console.log(`📂 악보 로딩: ${scoreSource}`);
     await loadScore(scoreSource);
@@ -339,6 +350,47 @@ async function bootstrap() {
       try { await loadScore("assets/canon.mxl"); } catch (e) { console.error(e); }
     }
   }
+
+  // 2) 🆕 D 비교 엔진 셋업 (scoreJson 필요)
+  let scoreJson = null;
+  try {
+    if (useBackend) {
+      scoreJson = await api.getScore(scoreId);   // ⚠️ api.js 실제 함수명 확인!
+    }
+  } catch (e) {
+    console.warn("scoreJson 못 받음:", e);
+  }
+
+  if (scoreJson) {
+    setupComparator(scoreJson);
+  } else {
+    console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능. (내일 백엔드+피아노로 실제 테스트)");
+  }
+}
+
+// 🆕 D 서비스 생성 + 콜백 연결
+function setupComparator(scoreJson) {
+  const settings = JSON.parse(sessionStorage.getItem('playSettings') || '{}');
+
+  window.scoreView.attachScoreJson(scoreJson);   // noteIdMap 구축 (현재 fallback 색칠)
+
+  service = new MidiComparatorService(scoreJson, {
+    chordWindowMs: 50,
+    toleranceMs: 200,
+    speedMultiplier: settings.speedMultiplier ?? 1.0,   // ← #2 핵심 (배속 전달)
+  });
+
+  service.onResult = (noteId, pitchResult, timingResult) => {
+    window.scoreView.highlightNote(noteId, pitchResult, timingResult);
+    window.scoreView.advanceCursor(noteId);
+  };
+  service.onFinish = () => {
+    window.scoreView.showResultScreen();
+  };
+
+  service.start().catch(e => console.error("MIDI 연결 실패:", e));
+  console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
 
 bootstrap();
+

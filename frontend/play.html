@@ -1,5 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
+import { MidiComparatorService } from './d/MidiComparatorService.js';
+
+// D 서비스 인스턴스 (bootstrap에서 생성, 모달 핸들러에서 사용)
+let service = null;
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -119,6 +123,6 @@
   <!-- 스크립트 -->
   <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/osmd-render.js"></script>
+  <script type="module" src="js/osmd-render.js"></script>
 </body>
 </html>
