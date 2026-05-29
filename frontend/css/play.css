@@ -239,14 +239,18 @@ button { font-family: inherit; cursor: pointer; }
 
 /* === 일시정지 모달 === */
 .modal-overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  z-index: 2000;
-  justify-content: center; align-items: center;
-  backdrop-filter: blur(2px);
+  position: fixed;
+  inset: 0;
+  display: none;              /* 🆕 기본은 숨김 */
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
 }
-.modal-overlay.show { display: flex; }
+
+.modal-overlay.show {
+  display: flex;              /* show 클래스 붙으면 보임 */
+}
 
 .modal-card {
   background: white;

@@ -110,18 +110,7 @@ function getCurrentCursorMeasureNumber() {
   } catch (e) { return null; }
 }
 
-function jumpCursorToMeasure(measureNumber) {
-  osmd.cursor.reset();
-  let safety = 0;
-  while (safety++ < 10000) {
-    const cur = getCurrentCursorMeasureNumber();
-    if (cur === measureNumber) return;
-    if (cur !== null && cur > measureNumber) return;
-    osmd.cursor.next();
-    const notes = osmd.cursor.NotesUnderCursor();
-    if (!notes || notes.length === 0) return;
-  }
-}
+
 
 // === 로딩 ===
 async function loadScore(source) {
@@ -214,12 +203,6 @@ window.scoreView = {
     updateProgressUI();
   },
 
-  resetCursorToMeasure(measureNumber) {
-    const gNotes = graphicalNotesByMeasure.get(measureNumber) || [];
-    gNotes.forEach(g => colorGraphicalNote(g, '#000000'));
-    jumpCursorToMeasure(measureNumber);
-    console.log(`[scoreView] 마디 ${measureNumber}로 리셋`);
-  },
 
   showResultScreen() {
   // 🆕 sessionStorage에 결과 저장
@@ -273,24 +256,15 @@ document.getElementById("btn-slow")?.addEventListener("click", () => {
   window.scoreView.highlightNote(null, 'correct', '느림');
   window.scoreView.advanceCursor(null);
 });
-document.getElementById("btn-reset-m1")?.addEventListener("click", () => {
-  window.scoreView.resetCursorToMeasure(1);
-});
+
 document.getElementById("btn-show-result")?.addEventListener("click", () => {
   window.scoreView.showResultScreen();
 });
 
-// === "다음 마디로" 버튼 ===
-document.getElementById("btn-next-measure")?.addEventListener("click", () => {
-  const cur = getCurrentCursorMeasureNumber();
-  if (cur !== null) {
-    jumpCursorToMeasure(cur + 1);
-  }
-});
 
 // === 일시정지 모달 ===
+// === 일시정지 모달 ===
 function openPauseModal() {
-  // 모달에 현재 통계 표시
   const total = stats.correct + stats.wrong;
   const acc = total === 0 ? 100 : Math.round(stats.correct / total * 100);
   document.getElementById("modal-accuracy").textContent = `${acc}%`;
@@ -298,12 +272,11 @@ function openPauseModal() {
 
   const currentMeasure = getCurrentCursorMeasureNumber() || 0;
   const totalMeasures = osmd.Sheet?.SourceMeasures?.length || 0;
-  document.getElementById("modal-progress").textContent = 
+  document.getElementById("modal-progress").textContent =
     `${currentMeasure}/${totalMeasures} 마디`;
 
   document.getElementById("pause-modal").classList.add("show");
-  
-  service?.pause(); 
+  service?.pause();
 }
 
 function closePauseModal() {
@@ -311,23 +284,20 @@ function closePauseModal() {
   service?.resume();
 }
 
-// 기존 btn-pause 핸들러 교체
-document.getElementById("btn-restart")?.addEventListener("click", () => {
-  service?.restart();        
-  window.scoreView.reset();
-  closePauseModal();         // 이 안에서 resume() 호출됨
-});
+// 일시정지 버튼 → 모달 열기 (이 줄이 빠져있었음!)
+document.getElementById("btn-pause")?.addEventListener("click", openPauseModal);
 
 // 모달 안의 버튼들
 document.getElementById("btn-resume")?.addEventListener("click", closePauseModal);
 
 document.getElementById("btn-restart")?.addEventListener("click", () => {
+  service?.restart();
   window.scoreView.reset();
   closePauseModal();
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
-  service?.stop();                       
+  service?.stop();
   window.scoreView.showResultScreen();
 });
 
