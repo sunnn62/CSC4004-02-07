@@ -321,32 +321,6 @@ window.scoreView = {
 }
 };
 
-// === 데모 버튼 ===
-document.getElementById("btn-next")?.addEventListener("click", () => {
-  window.scoreView.highlightNote(null, 'correct', '정확');
-  window.scoreView.advanceCursor(null);
-});
-document.getElementById("btn-prev")?.addEventListener("click", () => {
-  osmd.cursor.previous();
-  currentNoteIndex = Math.max(0, currentNoteIndex - 1);
-  updateProgressUI();
-  updateAutoScroll();                    // 🆕
-});
-document.getElementById("btn-reset")?.addEventListener("click", () => {
-  window.scoreView.reset();
-});
-document.getElementById("btn-wrong")?.addEventListener("click", () => {
-  window.scoreView.highlightNote(null, 'wrong', null);
-  window.scoreView.advanceCursor(null);
-});
-document.getElementById("btn-fast")?.addEventListener("click", () => {
-  window.scoreView.highlightNote(null, 'correct', '빠름');
-  window.scoreView.advanceCursor(null);
-});
-document.getElementById("btn-slow")?.addEventListener("click", () => {
-  window.scoreView.highlightNote(null, 'correct', '느림');
-  window.scoreView.advanceCursor(null);
-});
 
 document.getElementById("btn-show-result")?.addEventListener("click", () => {
   window.scoreView.showResultScreen();
@@ -427,10 +401,13 @@ async function bootstrap() {
     console.warn("scoreJson 못 받음:", e);
   }
 
+
+  // 나중에 꼭 수정하기!!!!!!!
   if (scoreJson) {
     setupComparator(scoreJson);
   } else {
-    console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능. (내일 백엔드+피아노로 실제 테스트)");
+    console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능.");
+    stopwatch.start();                    // 🆕 백엔드 없어도 스톱워치는 시작
   }
 }
 
