@@ -108,16 +108,27 @@ function updateSongInfo() {
   metaEl.textContent = `${totalMeasures}마디 · 양손 · ♩=${tempo}`;
 }
 
-// 커서 마디 추적
+// 커서 마디 추적 
 function getCurrentCursorMeasureNumber() {
   try {
-    const notes = osmd.cursor.NotesUnderCursor();
-    if (!notes || notes.length === 0) return null;
-    return notes[0].ParentVoiceEntry?.ParentSourceStaffEntry?.VerticalContainerParent?.ParentSourceMeasure?.MeasureNumber ?? null;
-  } catch (e) { return null; }
+    const iter = osmd.cursor.iterator;
+    if (!iter) return null;
+    
+    // OSMD 버전에 따라 케이스 다를 수 있어 둘 다 시도
+    const idx = iter.CurrentMeasureIndex ?? iter.currentMeasureIndex;
+    if (idx == null || idx < 0) return null;
+    
+    // SourceMeasures에서 실제 measure 객체 가져와서 MeasureNumber 사용
+    // (idx가 0-based, MeasureNumber는 보통 1-based여서 매핑 필요)
+    const measure = osmd.Sheet?.SourceMeasures?.[idx];
+    return measure?.MeasureNumber ?? (idx + 1);
+  } catch (e) {
+    console.warn('getCurrentCursorMeasureNumber 실패:', e);
+    return null;
+  }
 }
 
-// 🆕 자동 스크롤: 각 줄(system) 위치와 그 줄에 속한 measure 범위 캐싱
+// 자동 스크롤: 각 줄(system) 위치와 그 줄에 속한 measure 범위 캐싱
 function captureSystemLayout() {
   systemYPositions = [];
   systemMeasureRanges = [];
@@ -142,22 +153,31 @@ function captureSystemLayout() {
       });
     }
   }
-  console.log(`✅ 줄(system) ${systemYPositions.length}개 감지`);
+  console.log(`줄(system) ${systemYPositions.length}개 감지`);
 }
 
-// 🆕 컨테이너 높이를 2줄로 고정 + transition 셋업
+// 컨테이너 높이를 2줄로 고정 + transition 셋업
 function applyTwoLineView() {
-  if (systemYPositions.length < 2) return;          // 1줄짜리 곡은 스킵
-  const oneLineHeight = systemYPositions[1] - systemYPositions[0];
+  if (systemYPositions.length < 2) return;
+  
+  // 3번째 줄의 시작 y를 컨테이너 끝으로 쓰면 정확함
+  // (시스템마다 위/아래 여백이 달라서 단순 곱셈은 부정확)
+  const containerHeight = systemYPositions.length >= 3
+    ? systemYPositions[2]
+    : (systemYPositions[1] - systemYPositions[0]) * 2;
+  
   const container = document.getElementById('osmd-container');
-  container.style.height = `${oneLineHeight * 2}px`;
+  container.style.height = `${containerHeight}px`;
   container.style.overflow = 'hidden';
+  
+  console.log(`컨테이너 높이: ${containerHeight}px (시스템 ${systemYPositions.length}개)`);
+  console.log(`시스템 y좌표:`, systemYPositions);
 
   const svg = container.querySelector('svg');
   if (svg) svg.style.transition = 'transform 0.4s ease';
 }
 
-// 🆕 measure 번호 → 어느 줄에 속하는지
+// measure 번호 → 어느 줄에 속하는지
 function getSystemIndexForMeasure(measureNumber) {
   if (measureNumber == null) return -1;
   for (let i = 0; i < systemMeasureRanges.length; i++) {
@@ -170,20 +190,26 @@ function getSystemIndexForMeasure(measureNumber) {
 // N번째 줄을 화면 최상단에 오게 SVG 이동
 function scrollToSystem(systemIndex) {
   if (systemYPositions.length === 0) return;
-  // 마지막 줄에 도달하면 더 안 넘김 (빈 공간 방지)
   const maxIndex = Math.max(0, systemYPositions.length - 2);
   const idx = Math.max(0, Math.min(systemIndex, maxIndex));
   const targetY = systemYPositions[idx];
 
   const svg = document.querySelector('#osmd-container svg');
-  if (svg) svg.style.transform = `translateY(${-targetY}px)`;
+  if (!svg) {
+    console.warn(`scrollToSystem(${systemIndex}): SVG 못 찾음`);
+    return;
+  }
+  svg.style.transform = `translateY(${-targetY}px)`;
+  console.log(`translateY(${-targetY}px) 적용됨 (system ${idx})`);
 }
 
 // 커서 위치 보고 줄 바뀌었으면 스크롤
 function updateAutoScroll() {
   const measureNum = getCurrentCursorMeasureNumber();
   const newSystem = getSystemIndexForMeasure(measureNum);
+  console.log(`커서 → measure ${measureNum} / system ${newSystem} (현재 ${currentSystemIndex})`);
   if (newSystem >= 0 && newSystem !== currentSystemIndex) {
+    console.log(`스크롤 발동: system ${currentSystemIndex} → ${newSystem}`);
     currentSystemIndex = newSystem;
     scrollToSystem(currentSystemIndex);
   }
@@ -377,12 +403,22 @@ async function bootstrap() {
   const scoreId = params.get("scoreId");
 
   const useBackend = scoreId && scoreId.startsWith("mock-") === false && USE_MOCK === false;
-  const scoreSource = useBackend ? api.getMusicXmlUrl(scoreId) : "assets/canon.mxl";
 
-  // 1) OSMD 악보 렌더링 (기존)
+  // 1) OSMD 악보 렌더링
   try {
-    console.log(`📂 악보 로딩: ${scoreSource}`);
-    await loadScore(scoreSource);
+    if (useBackend) {
+      const url = api.getMusicXmlUrl(scoreId);
+      console.log(`📂 악보 로딩(백엔드) v4: ${url}`);
+      // 백엔드가 .mxl 압축을 풀어 평문 MusicXML(application/xml)로 내려준다.
+      // 평문 XML 문자열을 osmd.load()에 넘기면 가장 안정적으로 로드된다.
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`musicxml 응답 오류: ${res.status}`);
+      const xmlText = await res.text();
+      await loadScore(xmlText);
+    } else {
+      console.log(`📂 악보 로딩(로컬) v4: assets/canon.mxl`);
+      await loadScore("assets/canon.mxl");
+    }
   } catch (err) {
     console.error("❌ 악보 로딩 실패:", err);
     if (useBackend) {
@@ -446,6 +482,15 @@ function setupComparator(scoreJson) {
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
+
+// 디버그용
+window._debug = {
+  get systemYPositions() { return systemYPositions; },
+  get systemMeasureRanges() { return systemMeasureRanges; },
+  get currentSystemIndex() { return currentSystemIndex; },
+  get currentNoteIndex() { return currentNoteIndex; },
+};
+window.osmd = osmd;     // 콘솔에서 osmd 직접 만지게
 
 bootstrap();
 
