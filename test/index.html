@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>파트 D — 테스트</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; color: #a0c4ff; }
+    .subtitle { font-size: 0.85rem; color: #888; margin-bottom: 24px; }
+
+    /* ── 현재 기대 음표 ── */
+    #current-note-box {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      padding: 20px 28px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    #current-note-box .label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
+    #current-note-display {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #a0c4ff;
+      min-width: 80px;
+    }
+    #current-meta { font-size: 0.9rem; color: #aaa; line-height: 1.7; }
+    #progress-bar-wrap {
+      flex: 1;
+      background: #0f3460;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    #progress-bar {
+      height: 100%;
+      background: #a0c4ff;
+      border-radius: 99px;
+      transition: width 0.2s;
+      width: 0%;
+    }
+
+    /* ── 피아노 건반 ── */
+    #keyboard-section { margin-bottom: 20px; }
+    #keyboard-section h2 { font-size: 0.9rem; color: #888; margin-bottom: 10px; }
+    #piano {
+      display: flex;
+      gap: 3px;
+      align-items: flex-end;
+      height: 110px;
+    }
+    .key {
+      position: relative;
+      border-radius: 0 0 6px 6px;
+      cursor: default;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 6px;
+      font-size: 0.65rem;
+      font-weight: bold;
+      transition: background 0.05s;
+      user-select: none;
+    }
+    .key.white {
+      width: 46px;
+      height: 110px;
+      background: #ddd;
+      color: #555;
+      border: 1px solid #bbb;
+      z-index: 1;
+    }
+    .key.black {
+      width: 30px;
+      height: 68px;
+      background: #222;
+      color: #aaa;
+      margin: 0 -15px;
+      z-index: 2;
+    }
+    .key.active-expected {
+      background: #3a86ff !important;
+      color: #fff !important;
+    }
+    .key.active-pressed {
+      background: #ffbe0b !important;
+      color: #222 !important;
+    }
+    .key.result-correct {
+      background: #06d6a0 !important;
+      color: #fff !important;
+    }
+    .key.result-wrong {
+      background: #ef476f !important;
+      color: #fff !important;
+    }
+    .key .pc-key {
+      font-size: 0.6rem;
+      color: inherit;
+      opacity: 0.7;
+    }
+
+    /* ── 결과 피드 ── */
+    #feed-section h2 { font-size: 0.9rem; color: #888; margin-bottom: 10px; }
+    #feed {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 12px;
+      padding: 12px 16px;
+      height: 220px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .feed-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background: #0f3460;
+      animation: slideIn 0.15s ease;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+    .badge.correct { background: #06d6a0; color: #000; }
+    .badge.wrong   { background: #ef476f; color: #fff; }
+    .badge.timing-accurate { background: #3a86ff; color: #fff; }
+    .badge.timing-fast     { background: #ffbe0b; color: #222; }
+    .badge.timing-slow     { background: #fb5607; color: #fff; }
+    .feed-note-id { color: #888; font-size: 0.78rem; }
+
+    /* ── 마디 리셋 알림 ── */
+    #reset-toast {
+      display: none;
+      position: fixed;
+      top: 24px; right: 24px;
+      background: #ef476f;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      z-index: 999;
+      animation: slideIn 0.2s ease;
+    }
+
+    /* ── 통계 ── */
+    #stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 10px;
+      padding: 12px 20px;
+      text-align: center;
+      min-width: 90px;
+    }
+    .stat-card .val { font-size: 1.6rem; font-weight: bold; }
+    .stat-card .lbl { font-size: 0.72rem; color: #888; margin-top: 2px; }
+    .val.green { color: #06d6a0; }
+    .val.red   { color: #ef476f; }
+    .val.blue  { color: #a0c4ff; }
+
+    /* ── 컨트롤 ── */
+    #controls { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    button {
+      padding: 8px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: bold;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    #btn-reset  { background: #ef476f; color: #fff; }
+    #btn-slower { background: #0f3460; color: #aaa; }
+    #btn-faster { background: #0f3460; color: #aaa; }
+    #tolerance-label { color: #888; font-size: 0.82rem; align-self: center; }
+
+    /* ── 완료 오버레이 ── */
+    #finish-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+    #finish-overlay.show { display: flex; }
+    #finish-overlay h2 { font-size: 2rem; color: #a0c4ff; }
+    #finish-overlay .score { font-size: 4rem; font-weight: bold; color: #06d6a0; }
+    #finish-overlay button { background: #a0c4ff; color: #1a1a2e; padding: 12px 32px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+<h1>🎹 파트 D — MIDI 비교 테스트</h1>
+<p class="subtitle">PC 키보드로 연주하세요 &nbsp;|&nbsp; A S D F G H J K = C4 D4 E4 F4 G4 A4 B4 C5 &nbsp;|&nbsp; W E T Y U = C#4 D#4 F#4 G#4 A#4</p>
+
+<!-- 컨트롤 -->
+<div id="controls">
+  <button id="btn-reset">↺ 처음부터</button>
+  <button id="btn-slower">오차 넓히기 (현재: <span id="tol-val">200</span>ms)</button>
+  <button id="btn-faster">오차 좁히기</button>
+  <span id="tolerance-label">박자 허용 오차</span>
+</div>
+
+<!-- 통계 -->
+<div id="stats">
+  <div class="stat-card"><div class="val blue" id="stat-total">0</div><div class="lbl">전체</div></div>
+  <div class="stat-card"><div class="val green" id="stat-correct">0</div><div class="lbl">정확</div></div>
+  <div class="stat-card"><div class="val red" id="stat-wrong">0</div><div class="lbl">틀림</div></div>
+  <div class="stat-card"><div class="val blue" id="stat-accurate">0</div><div class="lbl">박자 정확</div></div>
+  <div class="stat-card"><div class="val" style="color:#ffbe0b" id="stat-fast">0</div><div class="lbl">빠름</div></div>
+  <div class="stat-card"><div class="val" style="color:#fb5607" id="stat-slow">0</div><div class="lbl">느림</div></div>
+</div>
+
+<!-- 현재 기대 음표 -->
+<div id="current-note-box">
+  <div>
+    <div class="label">다음에 칠 음</div>
+    <div id="current-note-display">—</div>
+  </div>
+  <div id="current-meta">대기 중...</div>
+  <div style="flex:1">
+    <div class="label" style="margin-bottom:6px">진행률</div>
+    <div id="progress-bar-wrap"><div id="progress-bar"></div></div>
+  </div>
+</div>
+
+<!-- 피아노 건반 -->
+<div id="keyboard-section">
+  <h2>건반 (파란색 = 다음 음, 노란색 = 지금 누름, 초록/빨강 = 판정)</h2>
+  <div id="piano"></div>
+</div>
+
+<!-- 결과 피드 -->
+<div id="feed-section">
+  <h2>실시간 판정 결과</h2>
+  <div id="feed"></div>
+</div>
+
+<!-- 마디 리셋 토스트 -->
+<div id="reset-toast"></div>
+
+<!-- 완료 오버레이 -->
+<div id="finish-overlay">
+  <h2>🎉 연주 완료!</h2>
+  <div class="score" id="final-score"></div>
+  <div id="final-detail" style="color:#aaa; font-size:0.9rem; text-align:center"></div>
+  <button onclick="location.reload()">다시 연주</button>
+</div>
+
+<script type="module">
+import { ChordBuffer }      from '../src/midi/chordBuffer.js';
+import { VirtualMidi }      from '../src/midi/virtualMidi.js';
+import { NoteComparator }   from '../src/comparator/noteComparator.js';
+
+// ══════════════════════════════════════════
+//  테스트용 악보 JSON (Canon in D 앞부분 발췌)
+//  BPM 60 → 1박 = 1000ms
+// ══════════════════════════════════════════
+const SCORE = {
+  metadata: { title: "Canon in D (테스트)", tempo: 60, timeSignature: "4/4", keySignature: "D major" },
+  measures: [
+    {
+      number: 1, repeatStart: false, repeatEnd: false,
+      tempos: [{ bpm: 60, text: null, startBeat: 0, absoluteStartBeat: 0 }],
+      dynamics: [{ mark: "p", targetVelocity: 49, startBeat: 0, absoluteStartBeat: 0 }],
+      pedals: [],
+      notes: [
+        { id:"n1",  pitches:[62], duration:1, startBeat:0, absoluteStartBeat:0,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        { id:"n2",  pitches:[69], duration:1, startBeat:1, absoluteStartBeat:1,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        { id:"n3",  pitches:[67], duration:1, startBeat:2, absoluteStartBeat:2,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        { id:"n4",  pitches:[64], duration:1, startBeat:3, absoluteStartBeat:3,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+      ]
+    },
+    {
+      number: 2, repeatStart: false, repeatEnd: false,
+      tempos: [], dynamics: [], pedals: [],
+      notes: [
+        { id:"n5",  pitches:[66], duration:1, startBeat:0, absoluteStartBeat:4,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        { id:"n6",  pitches:[62], duration:1, startBeat:1, absoluteStartBeat:5,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        { id:"n7",  pitches:[64], duration:1, startBeat:2, absoluteStartBeat:6,  hand:"right", isRest:false, tie:null,   isGrace:false, articulations:[] },
+        // 붙임줄 테스트: n8은 치는 음, n9는 이어받는 음(안 쳐도 됨)
+        { id:"n8",  pitches:[61], duration:1, startBeat:3, absoluteStartBeat:7,  hand:"right", isRest:false, tie:"start", isGrace:false, articulations:[] },
+        { id:"n9",  pitches:[61], duration:1, startBeat:4, absoluteStartBeat:8,  hand:"right", isRest:false, tie:"stop",  isGrace:false, articulations:[] },
+      ]
+    },
+    {
+      number: 3, repeatStart: false, repeatEnd: false,
+      tempos: [], dynamics: [], pedals: [],
+      notes: [
+        // 꾸밈음 테스트
+        { id:"n10", pitches:[63], duration:0.25, startBeat:0, absoluteStartBeat:9,  hand:"right", isRest:false, tie:null, isGrace:true,  articulations:[] },
+        { id:"n11", pitches:[62], duration:1,    startBeat:0, absoluteStartBeat:9,  hand:"right", isRest:false, tie:null, isGrace:false, articulations:[] },
+        // 쉼표 테스트: n12는 쉼표(자동 무시됨)
+        { id:"n12", pitches:[],   duration:1,    startBeat:1, absoluteStartBeat:10, hand:"right", isRest:true,  tie:null, isGrace:false, articulations:[] },
+        { id:"n13", pitches:[64], duration:1,    startBeat:2, absoluteStartBeat:11, hand:"right", isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:"n14", pitches:[66], duration:1,    startBeat:3, absoluteStartBeat:12, hand:"right", isRest:false, tie:null, isGrace:false, articulations:[] },
+      ]
+    },
+  ]
+};
+
+// ══════════════════════════════════════════
+//  MIDI 번호 → 음이름 변환
+// ══════════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function midiToName(midi) {
+  const oct = Math.floor(midi / 12) - 1;
+  return NOTE_NAMES[midi % 12] + oct;
+}
+
+// ══════════════════════════════════════════
+//  피아노 건반 렌더링
+// ══════════════════════════════════════════
+// C4(60) ~ C5(72) 13개
+const KEY_LAYOUT = [
+  { midi:60, type:'white', pcKey:'A' },
+  { midi:61, type:'black', pcKey:'W' },
+  { midi:62, type:'white', pcKey:'S' },
+  { midi:63, type:'black', pcKey:'E' },
+  { midi:64, type:'white', pcKey:'D' },
+  { midi:65, type:'white', pcKey:'F' },
+  { midi:66, type:'black', pcKey:'T' },
+  { midi:67, type:'white', pcKey:'G' },
+  { midi:68, type:'black', pcKey:'Y' },
+  { midi:69, type:'white', pcKey:'H' },
+  { midi:70, type:'black', pcKey:'U' },
+  { midi:71, type:'white', pcKey:'J' },
+  { midi:72, type:'white', pcKey:'K' },
+];
+
+const pianoEl = document.getElementById('piano');
+const keyEls = {};   // midi → element
+
+KEY_LAYOUT.forEach(({ midi, type, pcKey }) => {
+  const el = document.createElement('div');
+  el.className = `key ${type}`;
+  el.innerHTML = `<span>${midiToName(midi)}</span><span class="pc-key">[${pcKey}]</span>`;
+  pianoEl.appendChild(el);
+  keyEls[midi] = el;
+});
+
+function flashKey(midi, cls, durationMs = 400) {
+  const el = keyEls[midi];
+  if (!el) return;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), durationMs);
+}
+
+function setExpectedKeys(pitches) {
+  // 기존 expected 제거
+  Object.values(keyEls).forEach(el => el.classList.remove('active-expected'));
+  pitches.forEach(p => keyEls[p]?.classList.add('active-expected'));
+}
+
+// ══════════════════════════════════════════
+//  통계
+// ══════════════════════════════════════════
+const stats = { total:0, correct:0, wrong:0, accurate:0, fast:0, slow:0 };
+function updateStats(pitchResult, timingResult) {
+  stats.total++;
+  if (pitchResult === 'correct') stats.correct++; else stats.wrong++;
+  if (timingResult === '정확') stats.accurate++;
+  else if (timingResult === '빠름') stats.fast++;
+  else if (timingResult === '느림') stats.slow++;
+
+  document.getElementById('stat-total').textContent   = stats.total;
+  document.getElementById('stat-correct').textContent = stats.correct;
+  document.getElementById('stat-wrong').textContent   = stats.wrong;
+  document.getElementById('stat-accurate').textContent= stats.accurate;
+  document.getElementById('stat-fast').textContent    = stats.fast;
+  document.getElementById('stat-slow').textContent    = stats.slow;
+}
+
+// ══════════════════════════════════════════
+//  결과 피드
+// ══════════════════════════════════════════
+const feedEl = document.getElementById('feed');
+function addFeedItem(noteId, pitches, pitchResult, timingResult) {
+  const item = document.createElement('div');
+  item.className = 'feed-item';
+
+  const pitchBadge = `<span class="badge ${pitchResult}">${pitchResult === 'correct' ? '✓ 정확' : '✗ 틀림'}</span>`;
+  const timingBadge = timingResult
+    ? `<span class="badge timing-${timingResult === '정확' ? 'accurate' : timingResult === '빠름' ? 'fast' : 'slow'}">${timingResult}</span>`
+    : `<span class="badge" style="background:#333;color:#888">박자 면제</span>`;
+
+  const noteNames = pitches.map(midiToName).join('+') || '—';
+  item.innerHTML = `
+    <span class="feed-note-id">${noteId}</span>
+    <span style="color:#ccc;font-weight:bold">${noteNames}</span>
+    ${pitchBadge}
+    ${timingBadge}
+  `;
+  feedEl.prepend(item);  // 최신이 위로
+}
+
+// ══════════════════════════════════════════
+//  현재 기대 음표 표시
+// ══════════════════════════════════════════
+function updateCurrentNote(note, cursor, total) {
+  if (!note) {
+    document.getElementById('current-note-display').textContent = '완료';
+    document.getElementById('current-meta').textContent = '';
+    setExpectedKeys([]);
+    return;
+  }
+  const names = note.pitches.map(midiToName).join(' + ');
+  document.getElementById('current-note-display').textContent = names || '쉼표';
+  document.getElementById('current-meta').innerHTML =
+    `ID: ${note.id} &nbsp;|&nbsp; ` +
+    `Beat: ${note.absoluteStartBeat} &nbsp;|&nbsp; ` +
+    `손: ${note.hand === 'right' ? '오른손 🖐' : '왼손 🤚'}` +
+    (note.isGrace ? ' &nbsp;|&nbsp; 🎵 꾸밈음' : '');
+  const pct = total > 0 ? Math.round((cursor / total) * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  setExpectedKeys(note.pitches);
+}
+
+// ══════════════════════════════════════════
+//  마디 리셋 토스트
+// ══════════════════════════════════════════
+let toastTimer = null;
+function showResetToast(measureNumber) {
+  const el = document.getElementById('reset-toast');
+  el.textContent = `⚠ 마디 ${measureNumber} 처음으로 돌아갑니다`;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2200);
+}
+
+// ══════════════════════════════════════════
+//  엔진 초기화
+// ══════════════════════════════════════════
+let toleranceMs = 200;
+let comparator, chord, vm;
+
+function initEngine() {
+  // 기존 연결 해제
+  if (vm) vm.disconnect();
+
+  comparator = new NoteComparator(SCORE, { toleranceMs, pauseThresholdMs: 2000 });
+  chord      = new ChordBuffer(50);
+  vm         = new VirtualMidi();
+
+  // 전체 타건 대상 음표 수
+  const total = comparator._playList.length;
+
+  // 첫 번째 기대 음표 표시
+  updateCurrentNote(comparator.currentNote, 0, total);
+
+  // 배선: VirtualMidi → ChordBuffer → NoteComparator
+  vm.onNoteOn = (midiNote, velocity, timestamp) => {
+    // 누르는 순간 노란색 표시
+    flashKey(midiNote, 'active-pressed', 300);
+    chord.push(midiNote, velocity, timestamp);
+  };
+
+  chord.onChord = (notes, velocity, timestamp) => {
+    comparator.onChord(notes, velocity, timestamp);
+  };
+
+  comparator.onResult = (noteId, pitchResult, timingResult) => {
+    // 판정된 음표 찾기 (결과 직전 커서는 이미 +1 됐으므로 -1)
+    const judgedNote = comparator._playList[comparator._cursor - 1];
+    if (!judgedNote) return;
+
+    // 건반 색깔 표시
+    judgedNote.pitches.forEach(p => flashKey(p, pitchResult === 'correct' ? 'result-correct' : 'result-wrong', 500));
+
+    // 통계·피드 갱신
+    updateStats(pitchResult, timingResult);
+    addFeedItem(noteId, judgedNote.pitches, pitchResult, timingResult);
+
+    // 다음 기대 음표 표시
+    updateCurrentNote(comparator.currentNote, comparator._cursor, total);
+  };
+
+  comparator.onMeasureReset = (measureNumber) => {
+    showResetToast(measureNumber);
+    updateCurrentNote(comparator.currentNote, comparator._cursor, total);
+    setExpectedKeys(comparator.currentNote?.pitches ?? []);
+  };
+
+  comparator.onFinish = () => {
+    setExpectedKeys([]);
+    const acc = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
+    document.getElementById('final-score').textContent = acc + '%';
+    document.getElementById('final-detail').innerHTML =
+      `정확 ${stats.correct} / 전체 ${stats.total}<br>` +
+      `박자 정확 ${stats.accurate} · 빠름 ${stats.fast} · 느림 ${stats.slow}`;
+    document.getElementById('finish-overlay').classList.add('show');
+  };
+
+  vm.connect();
+}
+
+// ══════════════════════════════════════════
+//  컨트롤 버튼
+// ══════════════════════════════════════════
+document.getElementById('btn-reset').addEventListener('click', () => {
+  // 통계 초기화
+  Object.keys(stats).forEach(k => stats[k] = 0);
+  ['total','correct','wrong','accurate','fast','slow'].forEach(id => {
+    document.getElementById('stat-' + id).textContent = '0';
+  });
+  feedEl.innerHTML = '';
+  document.getElementById('finish-overlay').classList.remove('show');
+  initEngine();
+});
+
+document.getElementById('btn-slower').addEventListener('click', () => {
+  toleranceMs = Math.min(toleranceMs + 50, 500);
+  document.getElementById('tol-val').textContent = toleranceMs;
+  comparator._toleranceMs = toleranceMs;
+});
+
+document.getElementById('btn-faster').addEventListener('click', () => {
+  toleranceMs = Math.max(toleranceMs - 50, 50);
+  document.getElementById('tol-val').textContent = toleranceMs;
+  comparator._toleranceMs = toleranceMs;
+});
+
+// ══════════════════════════════════════════
+//  시작
+// ══════════════════════════════════════════
+initEngine();
+</script>
+</body>
+</html>

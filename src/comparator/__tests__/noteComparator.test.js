@@ -250,3 +250,69 @@ describe('곡 끝', () => {
     expect(finished).toHaveBeenCalledOnce();
   });
 });
+
+describe('양손 동시 연주 — 같은 박자 beat group 처리', () => {
+  // 같은 absoluteStartBeat에 오른손·왼손 음표가 있는 악보
+  function makeTwoHandScore() {
+    return makeScore([
+      note('r1', [60], 0, { hand: 'right' }),  // 오른손 beat 0 (C4)
+      note('l1', [48], 0, { hand: 'left'  }),  // 왼손  beat 0 (C3)
+      note('r2', [62], 1, { hand: 'right' }),  // 오른손 beat 1 (D4)
+      note('l2', [50], 1, { hand: 'left'  }),  // 왼손  beat 1 (D3)
+    ]);
+  }
+
+  it('beat 0 양손 동시 타건 → r1·l1 모두 correct, cursor가 2 앞으로', () => {
+    const c = new NoteComparator(makeTwoHandScore());
+    const results = [];
+    c.onResult = (id, pitch, timing) => results.push({ id, pitch, timing });
+
+    c.onChord([60, 48], 80, 0);   // 오른손 60 + 왼손 48 동시 입력
+
+    expect(results).toHaveLength(2);
+    expect(results[0]).toMatchObject({ id: 'r1', pitch: 'correct' });
+    expect(results[1]).toMatchObject({ id: 'l1', pitch: 'correct' });
+    // r1: 첫 음 → timing null / l1: 동시 타건 → timing null
+    expect(results[0].timing).toBeNull();
+    expect(results[1].timing).toBeNull();
+  });
+
+  it('beat 1 양손 동시 타건 → 이전 beat와 비교해 박자 판정', () => {
+    const c = new NoteComparator(makeTwoHandScore(), { toleranceMs: 200 });
+    const results = [];
+    c.onResult = (id, pitch, timing) => results.push({ id, pitch, timing });
+
+    c.onChord([60, 48], 80, 0);       // beat 0: 첫 음 → null
+    c.onChord([62, 50], 80, BEAT_MS); // beat 1: 정확히 1박 후 → 정확
+
+    expect(results).toHaveLength(4);
+    // beat 0
+    expect(results[0]).toMatchObject({ id: 'r1', pitch: 'correct', timing: null });
+    expect(results[1]).toMatchObject({ id: 'l1', pitch: 'correct', timing: null });
+    // beat 1: r2는 박자 판정 있음, l2는 동시 타건이므로 null
+    expect(results[2]).toMatchObject({ id: 'r2', pitch: 'correct', timing: '정확' });
+    expect(results[3]).toMatchObject({ id: 'l2', pitch: 'correct', timing: null });
+  });
+
+  it('왼손 오답 → l1만 wrong, r1은 correct', () => {
+    const c = new NoteComparator(makeTwoHandScore());
+    const results = [];
+    c.onResult = (id, pitch) => results.push({ id, pitch });
+
+    c.onChord([60, 47], 80, 0);  // 왼손 기대 48이지만 47 연주
+
+    expect(results[0]).toMatchObject({ id: 'r1', pitch: 'correct' });
+    expect(results[1]).toMatchObject({ id: 'l1', pitch: 'wrong'   });
+  });
+
+  it('beat 0 → beat 1 순서로 쳤을 때 커서가 r1→l1→r2→l2 순으로 진행', () => {
+    const c = new NoteComparator(makeTwoHandScore());
+    const ids = [];
+    c.onResult = (id) => ids.push(id);
+
+    c.onChord([60, 48], 80, 0);       // beat 0: r1, l1 처리
+    c.onChord([62, 50], 80, BEAT_MS); // beat 1: r2, l2 처리
+
+    expect(ids).toEqual(['r1', 'l1', 'r2', 'l2']);
+  });
+});

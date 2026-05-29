@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>파트 D — MIDI 디버그</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { background:#111; color:#eee; font-family:monospace; padding:20px; margin:0; }
+
+    /* ── 상단 컨트롤 패널 ── */
+    #panel {
+      display:flex; flex-wrap:wrap; gap:12px; align-items:center;
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:14px 18px; margin-bottom:16px;
+    }
+    #panel h2 { margin:0; font-size:1rem; color:#aaa; flex-basis:100%; }
+
+    button {
+      background:#2a5298; color:#fff; border:none; border-radius:6px;
+      padding:8px 18px; font-size:0.9rem; cursor:pointer; font-family:monospace;
+    }
+    button:hover { background:#3a6bc8; }
+    button:disabled { background:#333; color:#666; cursor:default; }
+    button.danger  { background:#7a2222; }
+    button.danger:hover { background:#a02828; }
+
+    #device-status {
+      font-size:0.85rem; padding:6px 12px; border-radius:4px;
+      background:#1e1e1e; border:1px solid #444; color:#888;
+    }
+    #device-status.connected { border-color:#4caf50; color:#4caf50; }
+    #device-status.error     { border-color:#ef5350; color:#ef5350; }
+
+    /* 배속 선택 */
+    #speed-group { display:flex; gap:6px; align-items:center; }
+    #speed-group label { color:#888; font-size:0.85rem; }
+    #speed-group button { padding:5px 12px; font-size:0.82rem; background:#333; }
+    #speed-group button.active { background:#2a5298; }
+
+    /* ── 로그 ── */
+    #log { line-height:1.9; font-size:0.88rem; }
+    .step   { color:#888; }
+    .input  { color:#61dafb; }
+    .filter { color:#f7c948; }
+    .chord  { color:#c792ea; }
+    .pitch  { color:#addb67; }
+    .timing { color:#ff9d7e; }
+    .result { color:#fff; font-weight:bold; }
+    .sep    { color:#2a2a2a; }
+    .warn   { color:#ef9a9a; }
+  </style>
+</head>
+<body>
+
+<div id="panel">
+  <h2>파트 D — 실시간 MIDI 디버그 (MidiInput + NoteComparator)</h2>
+
+  <button id="btn-connect">🎹 MIDI 연결</button>
+  <button id="btn-pause"   disabled>⏸ 일시정지</button>
+  <button id="btn-restart" disabled>🔄 처음부터</button>
+  <button id="btn-clear"   >🗑 로그 지우기</button>
+
+  <div id="device-status">장치 없음</div>
+
+  <div id="speed-group">
+    <label>배속:</label>
+    <button class="spd active" data-v="0.5">0.5×</button>
+    <button class="spd active" data-v="1.0">1.0×</button>
+    <button class="spd active" data-v="2.0">2.0×</button>
+  </div>
+</div>
+
+<div id="log"></div>
+
+<script type="module">
+import { MidiInput }      from '../src/midi/midiInput.js';
+import { ChordBuffer }    from '../src/midi/chordBuffer.js';
+import { NoteComparator } from '../src/comparator/noteComparator.js';
+
+// ══════════════════════════════════════════════
+//  악보 JSON  (BPM 60 → 1박 = 1000ms)
+//  n4(tie:stop), n5(rest) 는 playList에서 자동 제외됨
+// ══════════════════════════════════════════════
+const SCORE = {
+  metadata: { title:"테스트곡", tempo:60, timeSignature:"4/4", keySignature:"C major" },
+  measures: [
+    {
+      number:1, repeatStart:false, repeatEnd:false,
+      tempos:[{ bpm:60, text:null, startBeat:0, absoluteStartBeat:0 }],
+      dynamics:[], pedals:[],
+      notes:[
+        { id:"n1", pitches:[62], duration:1, startBeat:0, absoluteStartBeat:0, hand:"right", isRest:false, tie:null,    isGrace:false, articulations:[] },
+        { id:"n2", pitches:[69], duration:1, startBeat:1, absoluteStartBeat:1, hand:"right", isRest:false, tie:null,    isGrace:false, articulations:[] },
+        { id:"n3", pitches:[67], duration:1, startBeat:2, absoluteStartBeat:2, hand:"right", isRest:false, tie:"start", isGrace:false, articulations:[] },
+        { id:"n4", pitches:[67], duration:1, startBeat:3, absoluteStartBeat:3, hand:"right", isRest:false, tie:"stop",  isGrace:false, articulations:[] },
+        { id:"n5", pitches:[],   duration:1, startBeat:3, absoluteStartBeat:3, hand:"right", isRest:true,  tie:null,    isGrace:false, articulations:[] },
+      ]
+    },
+    {
+      number:2, repeatStart:false, repeatEnd:false,
+      tempos:[], dynamics:[], pedals:[],
+      notes:[
+        { id:"n6", pitches:[65], duration:1, startBeat:0, absoluteStartBeat:4, hand:"right", isRest:false, tie:null, isGrace:true,  articulations:[] },
+        { id:"n7", pitches:[64], duration:1, startBeat:0, absoluteStartBeat:4, hand:"right", isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:"n8", pitches:[62], duration:1, startBeat:1, absoluteStartBeat:5, hand:"right", isRest:false, tie:null, isGrace:false, articulations:[] },
+      ]
+    },
+  ]
+};
+
+// ══════════════════════════════════════════════
+//  유틸
+// ══════════════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const midiToName = m => NOTE_NAMES[m % 12] + (Math.floor(m/12)-1);
+
+const logEl = document.getElementById('log');
+function log(cls, msg) {
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+  line.scrollIntoView({ block:'nearest' });
+}
+function sep() { log('sep', '─'.repeat(68)); }
+
+// ══════════════════════════════════════════════
+//  엔진 초기화
+// ══════════════════════════════════════════════
+const midi       = new MidiInput();
+const chord      = new ChordBuffer(50);
+const comparator = new NoteComparator(SCORE, { toleranceMs:200, speedMultiplier:1.0 });
+
+let speedMultiplier = 1.0;
+let paused = false;
+
+// ── playList 초기 출력 ──
+log('step', '▶ 초기화: playList (쉼표·붙임줄stop 제외 후 실제 타건 대상)');
+comparator._playList.forEach((n, i) => {
+  const names = n.pitches.map(midiToName).join('+');
+  const flags = [n.isGrace && '꾸밈음', n.tie && `tie:${n.tie}`].filter(Boolean).join('  ');
+  log('filter', `  [${i}] ${n.id}  pitches:[${names}]  beat:${n.absoluteStartBeat}  ${flags}`);
+});
+log('step', `     → 총 ${comparator._playList.length}개 / 원본 ${SCORE.measures.flatMap(m=>m.notes).length}개`);
+sep();
+log('step', '🎹 위 [MIDI 연결] 버튼을 눌러 장치를 연결하세요.');
+sep();
+
+// ══════════════════════════════════════════════
+//  배선: MidiInput → ChordBuffer → NoteComparator
+// ══════════════════════════════════════════════
+
+// [1] MidiInput → raw NoteOn 수신
+midi.onNoteOn = (midiNote, velocity, timestamp) => {
+  if (paused) return;
+  log('input', `[1] MidiInput.onNoteOn   → midi:${midiNote} (${midiToName(midiNote)})  vel:${velocity}  t:${timestamp.toFixed(1)}ms`);
+  log('chord', `[2] ChordBuffer.push()   → 버퍼에 추가, 50ms 타이머 시작`);
+  chord.push(midiNote, velocity, timestamp);
+};
+
+// NoteOff는 비교에 사용 안 함 — 로그만 표시
+midi.onNoteOff = (midiNote, timestamp) => {
+  if (paused) return;
+  log('step', `     NoteOff (무시)  midi:${midiNote} (${midiToName(midiNote)})  t:${timestamp.toFixed(1)}ms`);
+};
+
+// [2] ChordBuffer → 묶인 화음
+chord.onChord = (notes, velocity, timestamp) => {
+  const names = notes.map(midiToName).join('+');
+  log('chord', `[3] ChordBuffer flush    → 50ms 경과, 묶인 음:[${names}]  t:${timestamp.toFixed(1)}ms`);
+  comparator.onChord(notes, velocity, timestamp);
+};
+
+// [3] NoteComparator.onChord — 내부 흐름 가시화를 위해 래핑
+const _origOnChord = comparator.onChord.bind(comparator);
+comparator.onChord = (notes, velocity, timestamp) => {
+  const expected = comparator._playList[comparator._cursor];
+  if (!expected) return;
+
+  const expNames = expected.pitches.map(midiToName).join('+');
+  log('step',  `[4] NoteComparator.onChord 진입`);
+
+  // 박자 판정 예고
+  if (comparator._prevNote === null || comparator._prevPlayedAt === null) {
+    const reason = comparator._prevNote === null ? '첫 음' : '일시정지 재개 직후';
+    log('timing', `[5] 박자 판정  → 면제 (${reason})`);
+  } else {
+    const bpm = SCORE.metadata.tempo;
+    const beatDiff = expected.absoluteStartBeat - comparator._prevNote.absoluteStartBeat;
+    const expMs = (beatDiff * 60000) / (bpm * speedMultiplier);
+    const actMs = timestamp - comparator._prevPlayedAt;
+    const err   = actMs - expMs;
+    log('timing', `[5] 박자 판정  기대:${expMs.toFixed(0)}ms  실제:${actMs.toFixed(0)}ms  오차:${err>=0?'+':''}${err.toFixed(0)}ms  허용:±${comparator._toleranceMs}ms  배속:${speedMultiplier}×`);
+  }
+
+  log('pitch', `[6] 음정 판정  기대:[${expNames}]  실제:[${notes.map(midiToName).join('+')}]`);
+
+  _origOnChord(notes, velocity, timestamp);
+};
+
+// [4] 결과 콜백
+comparator.onResult = (noteId, pitchResult, timingResult) => {
+  const symbol = pitchResult === 'correct' ? '✓' : '✗';
+  log('result', `[7] onResult  →  ${noteId}  음정:${symbol}${pitchResult}  박자:${timingResult ?? '면제'}`);
+  const next = comparator.currentNote;
+  if (next) {
+    log('step', `     cursor → [${comparator._cursor}] 다음 기대: ${next.id}  [${next.pitches.map(midiToName).join('+')}]`);
+  }
+  sep();
+};
+
+comparator.onFinish = () => {
+  sep();
+  log('result', '🎉 onFinish → 모든 음표 완료! [처음부터] 버튼으로 다시 시작하세요.');
+  sep();
+};
+
+// ══════════════════════════════════════════════
+//  UI 버튼
+// ══════════════════════════════════════════════
+const btnConnect = document.getElementById('btn-connect');
+const btnPause   = document.getElementById('btn-pause');
+const btnRestart = document.getElementById('btn-restart');
+const statusEl   = document.getElementById('device-status');
+
+// MIDI 연결
+btnConnect.addEventListener('click', async () => {
+  btnConnect.disabled = true;
+  btnConnect.textContent = '연결 중…';
+  try {
+    await midi.connect();
+
+    // 연결된 장치 이름 표시
+    const inputs = [...(await navigator.requestMIDIAccess()).inputs.values()];
+    const name = inputs[0]?.name ?? '알 수 없는 장치';
+    statusEl.textContent = `✅ ${name}`;
+    statusEl.className = 'connected';
+
+    btnPause.disabled   = false;
+    btnRestart.disabled = false;
+    btnConnect.textContent = '🎹 재연결';
+    btnConnect.disabled = false;
+
+    log('step', `🎹 MIDI 연결 완료: ${name}`);
+    log('step', '   이제 건반을 누르세요.');
+    sep();
+  } catch (e) {
+    statusEl.textContent = `❌ ${e.message}`;
+    statusEl.className = 'error';
+    btnConnect.textContent = '🎹 MIDI 연결';
+    btnConnect.disabled = false;
+    log('warn', `MIDI 연결 실패: ${e.message}`);
+  }
+});
+
+// 일시정지 / 재개
+btnPause.addEventListener('click', () => {
+  if (!paused) {
+    paused = true;
+    chord.cancel();
+    btnPause.textContent = '▶ 재개';
+    log('warn', '⏸ 일시정지 — 건반 입력 차단됨');
+    sep();
+  } else {
+    comparator.resumeAfterPause();
+    paused = false;
+    btnPause.textContent = '⏸ 일시정지';
+    log('step', '▶ 재개 — 재개 직후 첫 음 박자 면제');
+    sep();
+  }
+});
+
+// 처음부터
+btnRestart.addEventListener('click', () => {
+  comparator.reset();
+  paused = false;
+  btnPause.textContent = '⏸ 일시정지';
+  log('step', '🔄 처음부터 다시 시작');
+  log('step', `   다음 기대: ${comparator.currentNote?.id}  [${comparator.currentNote?.pitches.map(midiToName).join('+')}]`);
+  sep();
+});
+
+// 로그 지우기
+document.getElementById('btn-clear').addEventListener('click', () => {
+  logEl.innerHTML = '';
+});
+
+// 배속 버튼
+document.querySelectorAll('.spd').forEach(btn => {
+  btn.classList.remove('active');
+  if (btn.dataset.v === '1.0') btn.classList.add('active');
+
+  btn.addEventListener('click', () => {
+    speedMultiplier = parseFloat(btn.dataset.v);
+    comparator.setSpeed(speedMultiplier);
+    document.querySelectorAll('.spd').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    log('step', `⚡ 배속 변경 → ${speedMultiplier}× (유효 BPM: ${SCORE.metadata.tempo * speedMultiplier})`);
+  });
+});
+</script>
+</body>
+</html>

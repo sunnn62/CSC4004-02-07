@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>파트 C+D 통합 테스트 (백엔드 없음)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', sans-serif; }
+
+    /* ── 헤더 ── */
+    #header {
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    #header h1 { font-size: 1rem; color: #e0e0e0; flex: 1 1 200px; }
+
+    button {
+      padding: 7px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: opacity .15s;
+    }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: default; }
+    .btn-primary  { background: #0f3460; color: #fff; }
+    .btn-pause    { background: #533483; color: #fff; }
+    .btn-restart  { background: #1a535c; color: #fff; }
+
+    #midi-status {
+      font-size: 0.8rem;
+      padding: 5px 10px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      color: #888;
+    }
+    #midi-status.connected { border-color: #4caf50; color: #4caf50; }
+    #midi-status.error     { border-color: #ef5350; color: #ef5350; }
+
+    /* 배속 */
+    #speed-wrap { display: flex; gap: 5px; align-items: center; }
+    #speed-wrap label { font-size: 0.8rem; color: #888; }
+    .spd { background: #2a2a4a; color: #aaa; padding: 5px 11px; }
+    .spd.active { background: #0f3460; color: #fff; }
+
+    /* ── 통계 바 ── */
+    #stats-bar {
+      display: flex;
+      gap: 16px;
+      padding: 8px 20px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      font-size: 0.82rem;
+    }
+    .stat { color: #888; }
+    .stat span { color: #fff; font-weight: 700; margin-left: 4px; }
+    #stat-accuracy span { color: #4caf50; }
+    #stat-wrong    span { color: #ef5350; }
+
+    /* 진행 바 */
+    #progress-bar {
+      height: 3px;
+      background: #2a2a4a;
+    }
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0f3460, #533483);
+      width: 0%;
+      transition: width .3s;
+    }
+
+    /* ── 판정 배너 ── */
+    #judgment-banner {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      font-size: 2.2rem;
+      font-weight: 900;
+      padding: 12px 32px;
+      border-radius: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s, transform .15s;
+      z-index: 100;
+    }
+    #judgment-banner.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    #judgment-banner.accurate { background: rgba(45,110,78,.9);  color: #b9f6ca; }
+    #judgment-banner.fast     { background: rgba(255,152,0,.85);  color: #fff8e1; }
+    #judgment-banner.slow     { background: rgba(33,150,243,.85); color: #e3f2fd; }
+    #judgment-banner.wrong    { background: rgba(214,69,69,.9);   color: #ffeaea; }
+
+    /* ── OSMD 영역 ── */
+    #osmd-wrap {
+      background: #fff;
+      margin: 16px;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 220px;
+    }
+    #osmd-container { padding: 12px; }
+
+    /* ── 로그 ── */
+    #log-wrap {
+      margin: 0 16px 16px;
+      background: #0d0d1a;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      max-height: 220px;
+      overflow-y: auto;
+      padding: 10px 14px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      line-height: 1.8;
+    }
+    .log-correct { color: #69f0ae; }
+    .log-wrong   { color: #ff5252; }
+    .log-timing  { color: #ffb74d; }
+    .log-info    { color: #78909c; }
+    .log-finish  { color: #fff176; font-weight: bold; }
+
+    /* ── 악보 참고표 ── */
+    #note-list {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 16px 10px;
+    }
+    .note-chip {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #16213e;
+      border: 2px solid #2a2a4a;
+      font-size: 0.78rem;
+      min-width: 52px;
+      transition: border-color .2s, background .2s;
+    }
+    .note-chip .beat  { color: #666; font-size: 0.68rem; }
+    .note-chip .pitch { font-weight: 700; color: #ccc; }
+    .note-chip.current  { border-color: #533483; background: #1a0a3e; }
+    .note-chip.correct  { border-color: #4caf50; background: #0a2a12; }
+    .note-chip.wrong    { border-color: #ef5350; background: #2a0a0a; }
+  </style>
+</head>
+<body>
+
+<!-- ── 헤더 ── -->
+<div id="header">
+  <h1>🎹 파트 C+D 통합 테스트 <small style="color:#555;font-weight:400">(백엔드 없음 · C 장조 음계)</small></h1>
+  <button class="btn-primary" id="btn-connect">🎹 MIDI 연결</button>
+  <button class="btn-pause"   id="btn-pause"   disabled>⏸ 일시정지</button>
+  <button class="btn-restart" id="btn-restart" disabled>🔄 처음부터</button>
+  <div id="midi-status">장치 없음</div>
+  <div id="speed-wrap">
+    <label>배속</label>
+    <button class="spd" data-v="0.5">0.5×</button>
+    <button class="spd active" data-v="1.0">1.0×</button>
+    <button class="spd" data-v="2.0">2.0×</button>
+  </div>
+</div>
+
+<!-- ── 통계 바 ── -->
+<div id="stats-bar">
+  <div class="stat" id="stat-accuracy">정확도 <span id="acc-val">--%</span></div>
+  <div class="stat" id="stat-wrong">오답 <span id="wrong-val">0개</span></div>
+  <div class="stat">진행 <span id="prog-val">0 / 8</span></div>
+  <div class="stat" style="margin-left:auto;color:#555;font-size:0.75rem">
+    BPM 120 · C장조 음계 · 8음표
+  </div>
+</div>
+<div id="progress-bar"><div id="progress-fill"></div></div>
+
+<!-- ── 음표 칩 (악보 요약) ── -->
+<div id="note-list"></div>
+
+<!-- ── OSMD 악보 ── -->
+<div id="osmd-wrap">
+  <div id="osmd-container"></div>
+</div>
+
+<!-- ── 판정 배너 ── -->
+<div id="judgment-banner"></div>
+
+<!-- ── 로그 ── -->
+<div id="log-wrap" id="log"></div>
+
+<!-- OSMD CDN -->
+<script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
+
+<script type="module">
+import { MidiComparatorService } from '../src/MidiComparatorService.js';
+
+// ══════════════════════════════════════════════
+//  테스트용 악보 데이터
+//  C 장조 음계 (C4~C5), BPM 120, 4/4박, 2마디
+//  OSMD MusicXML과 완전히 동일한 음표 구성
+// ══════════════════════════════════════════════
+
+// MIDI: C4=60 D4=62 E4=64 F4=65 G4=67 A4=69 B4=71 C5=72
+const SCORE_JSON = {
+  metadata: {
+    title: 'C Major Scale',
+    tempo: 120,
+    timeSignature: '4/4',
+    keySignature: 'C major',
+  },
+  measures: [
+    {
+      number: 1,
+      repeatStart: false, repeatEnd: false,
+      tempos: [{ bpm: 120, text: null, startBeat: 0, absoluteStartBeat: 0 }],
+      dynamics: [], pedals: [],
+      notes: [
+        { id:'m1n1', pitches:[60], duration:1, startBeat:0, absoluteStartBeat:0, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m1n2', pitches:[62], duration:1, startBeat:1, absoluteStartBeat:1, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m1n3', pitches:[64], duration:1, startBeat:2, absoluteStartBeat:2, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m1n4', pitches:[65], duration:1, startBeat:3, absoluteStartBeat:3, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      ],
+    },
+    {
+      number: 2,
+      repeatStart: false, repeatEnd: false,
+      tempos: [], dynamics: [], pedals: [],
+      notes: [
+        { id:'m2n1', pitches:[67], duration:1, startBeat:0, absoluteStartBeat:4, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m2n2', pitches:[69], duration:1, startBeat:1, absoluteStartBeat:5, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m2n3', pitches:[71], duration:1, startBeat:2, absoluteStartBeat:6, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+        { id:'m2n4', pitches:[72], duration:1, startBeat:3, absoluteStartBeat:7, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      ],
+    },
+  ],
+};
+
+// MusicXML (OSMD용) — scoreJson과 완전히 동일한 음표
+const MUSICXML = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN"
+  "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <work><work-title>C Major Scale</work-title></work>
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <direction placement="above">
+        <direction-type>
+          <metronome parentheses="no">
+            <beat-unit>quarter</beat-unit><per-minute>120</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="120"/>
+      </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="2">
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+
+// ══════════════════════════════════════════════
+//  유틸
+// ══════════════════════════════════════════════
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const midiToName = m => NOTE_NAMES[m % 12] + (Math.floor(m / 12) - 1);
+
+const logEl = document.getElementById('log-wrap');
+function addLog(cls, msg) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ══════════════════════════════════════════════
+//  음표 칩 (악보 요약 표시)
+// ══════════════════════════════════════════════
+const allNotes = SCORE_JSON.measures.flatMap(m => m.notes.filter(n => !n.isRest));
+const noteListEl = document.getElementById('note-list');
+const chips = {};
+
+allNotes.forEach((n, i) => {
+  const chip = document.createElement('div');
+  chip.className = 'note-chip' + (i === 0 ? ' current' : '');
+  chip.innerHTML = `<span class="beat">박${n.absoluteStartBeat + 1}</span>
+                    <span class="pitch">${n.pitches.map(midiToName).join('+')}</span>`;
+  noteListEl.appendChild(chip);
+  chips[n.id] = chip;
+});
+
+// ══════════════════════════════════════════════
+//  OSMD 초기화
+// ══════════════════════════════════════════════
+const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay('osmd-container', {
+  autoResize: true,
+  drawTitle: true,
+  followCursor: true,
+});
+
+let osmdReady = false;
+(async () => {
+  try {
+    await osmd.load(MUSICXML);
+    osmd.render();
+    osmd.cursor.show();
+    osmdReady = true;
+    addLog('log-info', '✅ OSMD 악보 렌더링 완료 (C 장조 음계 2마디)');
+  } catch (e) {
+    addLog('log-info', `⚠️ OSMD 렌더링 오류: ${e.message}`);
+  }
+})();
+
+// ══════════════════════════════════════════════
+//  파트 C 역할 — scoreView
+// ══════════════════════════════════════════════
+let stats = { correct: 0, wrong: 0 };
+let noteIndex = 0;
+const TOTAL = allNotes.length;
+
+function updateStats() {
+  const total = stats.correct + stats.wrong;
+  const acc = total === 0 ? '--' : Math.round(stats.correct / total * 100);
+  document.getElementById('acc-val').textContent   = acc + '%';
+  document.getElementById('wrong-val').textContent = stats.wrong + '개';
+  document.getElementById('prog-val').textContent  = `${noteIndex} / ${TOTAL}`;
+  document.getElementById('progress-fill').style.width = `${(noteIndex / TOTAL) * 100}%`;
+}
+
+function showBanner(pitchResult, timingResult) {
+  let text, cls;
+  if (pitchResult === 'wrong')        { text = 'Miss';    cls = 'wrong'; }
+  else if (timingResult === '정확')   { text = 'Perfect'; cls = 'accurate'; }
+  else if (timingResult === '빠름')   { text = 'Fast';    cls = 'fast'; }
+  else if (timingResult === '느림')   { text = 'Slow';    cls = 'slow'; }
+  else                                { text = 'Perfect'; cls = 'accurate'; }
+
+  const banner = document.getElementById('judgment-banner');
+  banner.textContent = text;
+  banner.className   = `judgment-banner ${cls}`;
+  banner.classList.remove('show');
+  void banner.offsetWidth;
+  banner.classList.add('show');
+  clearTimeout(banner._t);
+  banner._t = setTimeout(() => banner.classList.remove('show'), 700);
+}
+
+function highlightNote(noteId, pitchResult, timingResult) {
+  // 음표 칩 색상
+  if (chips[noteId]) {
+    chips[noteId].classList.remove('current');
+    chips[noteId].classList.add(pitchResult === 'correct' ? 'correct' : 'wrong');
+  }
+
+  // OSMD 커서 아래 음표 색상
+  if (osmdReady) {
+    try {
+      const color = pitchResult === 'correct' ? '#2D6E4E' : '#D64545';
+      const srcNotes = osmd.cursor.NotesUnderCursor();
+      if (srcNotes) {
+        const allGNotes = osmd.GraphicSheet.MeasureList.flatMap(row =>
+          row.flatMap(gm => gm?.staffEntries?.flatMap(se =>
+            se?.graphicalVoiceEntries?.flatMap(gve => gve?.notes ?? []) ?? []) ?? []) ?? []);
+        srcNotes.forEach(sn => {
+          const gn = allGNotes.find(g => g.sourceNote === sn);
+          const svg = gn?.getSVGGElement?.();
+          if (svg) svg.querySelectorAll('path').forEach(p => {
+            p.setAttribute('fill', color);
+            p.setAttribute('stroke', color);
+          });
+        });
+      }
+    } catch (e) { /* OSMD 버전 차이 방어 */ }
+  }
+
+  // 통계
+  pitchResult === 'correct' ? stats.correct++ : stats.wrong++;
+  showBanner(pitchResult, timingResult);
+  updateStats();
+
+  // 로그
+  const noteNames = (chips[noteId]?.querySelector('.pitch')?.textContent) ?? noteId;
+  const timing = timingResult ?? '면제';
+  const symbol = pitchResult === 'correct' ? '✓' : '✗';
+  addLog(
+    pitchResult === 'correct' ? 'log-correct' : 'log-wrong',
+    `${symbol} ${noteId}  음정:${pitchResult}  박자:${timing}  (${noteNames})`
+  );
+}
+
+function advanceCursor(noteId) {
+  // 다음 음표 칩 current 표시
+  const nextIdx = allNotes.findIndex(n => n.id === noteId) + 1;
+  if (nextIdx < allNotes.length) {
+    chips[allNotes[nextIdx].id]?.classList.add('current');
+  }
+
+  // OSMD 커서 이동
+  if (osmdReady) {
+    try { osmd.cursor.next(); } catch (e) {}
+  }
+
+  noteIndex++;
+  updateStats();
+}
+
+function resetView() {
+  Object.values(chips).forEach(c => c.className = 'note-chip');
+  if (chips[allNotes[0]?.id]) chips[allNotes[0].id].classList.add('current');
+  if (osmdReady) { try { osmd.cursor.reset(); } catch (e) {} }
+  stats = { correct: 0, wrong: 0 };
+  noteIndex = 0;
+  updateStats();
+  addLog('log-info', '🔄 처음부터 다시 시작');
+}
+
+// ══════════════════════════════════════════════
+//  파트 D — MidiComparatorService
+// ══════════════════════════════════════════════
+let speedMultiplier = 1.0;
+let service = null;
+
+function createService() {
+  if (service) service.stop();
+
+  service = new MidiComparatorService(SCORE_JSON, {
+    chordWindowMs: 50,
+    toleranceMs: 200,
+    speedMultiplier,
+  });
+
+  service.onResult = (noteId, pitchResult, timingResult) => {
+    highlightNote(noteId, pitchResult, timingResult);
+    advanceCursor(noteId);
+  };
+
+  service.onFinish = () => {
+    const total = stats.correct + stats.wrong;
+    const acc = total === 0 ? 0 : Math.round(stats.correct / total * 100);
+    addLog('log-finish', `🎉 연주 완료!  정확도: ${acc}%  오답: ${stats.wrong}개`);
+  };
+}
+
+// ══════════════════════════════════════════════
+//  UI 버튼
+// ══════════════════════════════════════════════
+const btnConnect = document.getElementById('btn-connect');
+const btnPause   = document.getElementById('btn-pause');
+const btnRestart = document.getElementById('btn-restart');
+const statusEl   = document.getElementById('midi-status');
+
+// MIDI 연결
+btnConnect.addEventListener('click', async () => {
+  btnConnect.disabled = true;
+  btnConnect.textContent = '연결 중…';
+  try {
+    createService();
+    await service.start();
+
+    const inputs = [...(await navigator.requestMIDIAccess()).inputs.values()];
+    const name = inputs[0]?.name ?? '알 수 없는 장치';
+    statusEl.textContent = `✅ ${name}`;
+    statusEl.className = 'connected';
+
+    btnPause.disabled   = false;
+    btnRestart.disabled = false;
+    btnConnect.textContent = '🎹 재연결';
+    btnConnect.disabled = false;
+    addLog('log-info', `🎹 MIDI 연결: ${name} → 건반을 눌러보세요!`);
+    addLog('log-info', `   배속: ${speedMultiplier}×  BPM: ${SCORE_JSON.metadata.tempo * speedMultiplier}  허용오차: ±200ms`);
+  } catch (e) {
+    statusEl.textContent = `❌ ${e.message}`;
+    statusEl.className = 'error';
+    btnConnect.textContent = '🎹 MIDI 연결';
+    btnConnect.disabled = false;
+    addLog('log-info', `MIDI 연결 실패: ${e.message}`);
+  }
+});
+
+// 일시정지 / 재개
+let paused = false;
+btnPause.addEventListener('click', () => {
+  if (!paused) {
+    paused = true;
+    service?.pause();
+    btnPause.textContent = '▶ 재개';
+    addLog('log-info', '⏸ 일시정지 — 건반 입력 차단');
+  } else {
+    paused = false;
+    service?.resume();
+    btnPause.textContent = '⏸ 일시정지';
+    addLog('log-info', '▶ 재개 — 다음 음 박자 판정 면제');
+  }
+});
+
+// 처음부터
+btnRestart.addEventListener('click', () => {
+  service?.restart();
+  resetView();
+});
+
+// 배속 버튼
+document.querySelectorAll('.spd').forEach(btn => {
+  btn.addEventListener('click', () => {
+    speedMultiplier = parseFloat(btn.dataset.v);
+    service?.setSpeed(speedMultiplier);
+    document.querySelectorAll('.spd').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    addLog('log-info', `⚡ 배속 → ${speedMultiplier}×  유효 BPM: ${SCORE_JSON.metadata.tempo * speedMultiplier}  1박 기대: ${(60000 / (SCORE_JSON.metadata.tempo * speedMultiplier)).toFixed(0)}ms`);
+  });
+});
+
+// 초기 통계 표시
+updateStats();
+addLog('log-info', '▶ 페이지 로드 완료. [MIDI 연결] 버튼을 눌러 피아노와 연결하세요.');
+addLog('log-info', '   테스트 악보: C4 D4 E4 F4 G4 A4 B4 C5  (BPM 120, 1박=500ms, 허용±200ms)');
+</script>
+</body>
+</html>

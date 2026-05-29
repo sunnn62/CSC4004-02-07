@@ -52,34 +52,40 @@ export class NoteComparator {
       return;
     }
 
-    const expected = this._playList[this._cursor];
+    // ── 같은 박자 그룹 수집 ──
+    // 양손 등 동일 absoluteStartBeat에 여러 음표가 있을 경우
+    // 한 번의 chord 이벤트로 모두 처리한다.
+    const beatGroup = this._getSameBeatGroup(this._cursor);
+    const firstNote = beatGroup[0];
 
-    // ── 음정 판정 ──
-    const pitchResult = this._judgePitch(playedNotes, expected.pitches);
-
-    // ── 박자 판정 ──
+    // ── 박자 판정 (그룹 첫 번째 음표 기준, 1회만) ──
     // 조건: 첫 음이 아니고(_prevNote !== null) 타임스탬프 기준이 있을 때(_prevPlayedAt !== null)
     // _prevPlayedAt이 null인 경우: 곡 시작 첫 음 또는 일시정지 재개 직후 → 면제
-    let timingResult = null;
+    let groupTimingResult = null;
     if (this._prevNote !== null && this._prevPlayedAt !== null) {
       const expMs = expectedIntervalMs(
         this._prevNote,
-        expected,
+        firstNote,
         this._score.measures,
         this._score.metadata.tempo,
         this._speedMultiplier,
       );
       const actMs = timestamp - this._prevPlayedAt;
-      timingResult = judgeTiming(actMs, expMs, expected.isGrace, this._toleranceMs);
+      groupTimingResult = judgeTiming(actMs, expMs, firstNote.isGrace, this._toleranceMs);
     }
 
-    // ── 상태 갱신 ──
-    this._prevNote = expected;
-    this._prevPlayedAt = timestamp;
-    this._cursor++;
+    // ── 그룹 내 각 음표를 순서대로 판정 & 결과 전달 ──
+    beatGroup.forEach((note, idx) => {
+      const pitchResult = this._judgePitch(playedNotes, note.pitches);
+      // 박자 판정: 그룹의 첫 번째 음만 적용, 나머지는 null (동시 타건)
+      const timingResult = idx === 0 ? groupTimingResult : null;
 
-    // ── 결과 전달 ──
-    this.onResult?.(expected.id, pitchResult, timingResult);
+      this._prevNote = note;
+      this._prevPlayedAt = timestamp;
+      this._cursor++;
+
+      this.onResult?.(note.id, pitchResult, timingResult);
+    });
 
     if (this._cursor >= this._playList.length) {
       this.onFinish?.();
@@ -124,5 +130,23 @@ export class NoteComparator {
     // 화음: 기대 음표 전부 포함되면 correct (여분 음 허용)
     const allMatch = expectedPitches.every((p) => playedNotes.includes(p));
     return allMatch ? 'correct' : 'wrong';
+  }
+
+  /**
+   * cursor 위치부터 absoluteStartBeat가 동일한 연속 음표를 모두 반환한다.
+   * 양손 연주 처리: 같은 박자에 오른손·왼손 음표가 각각 있을 때
+   * 한 번의 chord 이벤트로 함께 판정하기 위해 사용한다.
+   * @param {number} startCursor
+   * @returns {Array}
+   */
+  _getSameBeatGroup(startCursor) {
+    const beat = this._playList[startCursor].absoluteStartBeat;
+    const group = [];
+    let i = startCursor;
+    while (i < this._playList.length && this._playList[i].absoluteStartBeat === beat) {
+      group.push(this._playList[i]);
+      i++;
+    }
+    return group;
   }
 }
