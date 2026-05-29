@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>피아니 - 홈</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+
+    <main class="main">
+      <!-- 상단 헤더 -->
+      <header class="home-header">
+        <div class="date" id="today-date">—</div>
+        <div class="greeting-row">
+          <h1 class="greeting">안녕하세요, <span class="name">에지</span>님</h1>
+          <div class="weekly-stat">
+            <span class="weekly-label">이번 주</span>
+            <strong id="weekly-time">1시간 32분</strong>
+          </div>
+        </div>
+      </header>
+
+      <!-- 이어서 연습 카드 -->
+      <section class="continue-card" id="continue-card">
+        <div class="continue-label">이어서 연습</div>
+        <h2 class="continue-title">고요한 밤 거룩한 밤</h2>
+        <div class="continue-meta">F. Gruber · 양손 · ♩=76</div>
+        <div class="continue-bottom">
+          <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" style="width: 68%"></div></div>
+            <span class="progress-text">68%</span>
+          </div>
+          <button class="resume-btn" id="resume-btn">
+            <span class="play-icon">▶</span> 이어서 연주
+          </button>
+        </div>
+      </section>
+
+      <!-- 내 악보 그리드 -->
+      <section class="scores-section">
+        <div class="scores-header">
+          <h3 class="scores-title">내 악보</h3>
+          <div class="scores-actions">
+            <a href="#" class="see-all">전체보기</a>
+            <a href="index.html" class="add-score-btn">+ 새 악보</a>
+          </div>
+        </div>
+
+        <div class="scores-grid" id="scores-grid">
+          <!-- home.js에서 채움 -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 사이드바 주입 -->
+  <script type="module">
+    import { renderSidebar } from './js/sidebar.js';
+    renderSidebar('home', document.getElementById('sidebar'));
+  </script>
+
+  <!-- 홈 화면 동적 데이터 -->
+  <script src="js/home.js"></script>
+</body>
+</html>

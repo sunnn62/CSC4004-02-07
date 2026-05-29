@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피아니 - 연주</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/play.css">
+</head>
+<body>
+  <!-- 세로 모드 안내 -->
+  <div class="rotate-overlay">
+    <div class="rotate-icon">⟳</div>
+    <p>화면을 가로로 돌려주세요</p>
+  </div>
+
+  <div class="play-screen">
+    <!-- 상단 바 -->
+    <header class="play-header">
+      <button class="close-btn" onclick="history.back()">×</button>
+      <div class="song-info">
+        <h1 class="song-title" id="song-title">곡 제목</h1>
+        <div class="song-meta" id="song-meta">로딩 중...</div>
+      </div>
+      <div class="midi-status">
+        <span class="status-dot"></span>
+        <span>전자 피아노 수신 중</span>
+      </div>
+      <div class="timer" id="timer">00:00 / --:--</div>
+    </header>
+
+    <!-- 진행률 바 -->
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <!-- 악보 영역 -->
+    <main class="score-area">
+      <div id="osmd-container"></div>
+    </main>
+
+    <!-- 하단 컨트롤 바 -->
+    <footer class="play-footer">
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">음정 정확도</span>
+          <span class="stat-value" id="stat-accuracy">100<small>%</small></span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-label">틀린 음</span>
+          <span class="stat-value" id="stat-wrong">0<small>개</small></span>
+        </div>
+      </div>
+
+      <div class="main-controls">
+        <button class="icon-btn" title="메트로놈">⏱</button>
+        <button class="primary-btn" id="btn-pause">⏸ 일시정지</button>
+        <div id="judgment-banner" class="judgment-banner"></div>
+      </div>
+
+      <button class="text-btn" id="btn-next-measure">→ 다음 마디로</button>
+    </footer>
+  </div>
+
+  <!-- 개발용 데모 패널 (D 통합되면 제거) -->
+  <details class="dev-panel">
+    <summary>🛠 데모</summary>
+    <div class="dev-buttons">
+      <button id="btn-reset">처음으로</button>
+      <button id="btn-prev">◀ 이전</button>
+      <button id="btn-next">정답·정확</button>
+      <button id="btn-fast">정답·빠름</button>
+      <button id="btn-slow">정답·느림</button>
+      <button id="btn-wrong">오답</button>
+      <button id="btn-show-result">결과 화면 가기</button>
+    </div>
+  </details>
+
+
+  <!-- 일시정지 모달 -->
+<div class="modal-overlay" id="pause-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-icon">⏸</div>
+      <div class="modal-title-block">
+        <h3 class="modal-title">일시정지</h3>
+        <p class="modal-subtitle">잠시 쉬어가세요. 이어서 연주할 수 있어요.</p>
+      </div>
+    </div>
+
+    <div class="modal-stats">
+      <div class="modal-stat">
+        <span class="modal-stat-label">진행</span>
+        <span class="modal-stat-value" id="modal-progress">0/0 마디</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-label">음정 정확도</span>
+        <span class="modal-stat-value" id="modal-accuracy">100%</span>
+      </div>
+      <div class="modal-stat">
+        <span class="modal-stat-label">틀린 음</span>
+        <span class="modal-stat-value" id="modal-wrong">0개</span>
+      </div>
+    </div>
+
+    <button class="modal-primary-btn" id="btn-resume">▶ 이어서 연주</button>
+
+    <div class="modal-secondary-buttons">
+      <button class="modal-secondary-btn" id="btn-restart">처음부터</button>
+      <button class="modal-secondary-btn" id="btn-end">연주 끝내기</button>
+    </div>
+  </div>
+</div>
+
+  <!-- 스크립트 -->
+  <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
+  <script src="js/api.js"></script>
+  <script type="module" src="js/osmd-render.js"></script>
+</body>
+</html>
