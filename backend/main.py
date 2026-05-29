@@ -262,11 +262,14 @@ def _find_musicxml_path(score_id: str) -> Optional[str]:
         path = os.path.join(UPLOAD_DIR, f"{score_id}.{ext}")
         if os.path.exists(path):
             return path
-    # PDF/이미지에서 oemer가 생성한 MusicXML
+    # PDF/이미지에서 OMR이 생성한 MusicXML
+    # - Oemer: page_N.musicxml
+    # - Audiveris: {name}.mxl (zip 압축본) → get_musicxml에서 풀어서 평문 XML로 서빙
     work_musicxml_dir = os.path.join(SCORES_DIR, f"{score_id}_work", "musicxml")
     if os.path.exists(work_musicxml_dir):
-        files = glob.glob(os.path.join(work_musicxml_dir, "*.xml")) + \
-                glob.glob(os.path.join(work_musicxml_dir, "*.musicxml"))
+        files = glob.glob(os.path.join(work_musicxml_dir, "*.musicxml")) + \
+                glob.glob(os.path.join(work_musicxml_dir, "*.xml")) + \
+                glob.glob(os.path.join(work_musicxml_dir, "*.mxl"))
         if files:
             return files[0]
     return None

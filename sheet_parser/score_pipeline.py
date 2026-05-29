@@ -14,6 +14,7 @@ OMR(Oemer) 결과는 BPM, 조표, 박자표를 자주 놓치기 때문에
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -150,6 +151,82 @@ def preprocess_score_file(
         processed_paths.append(output_path)
 
     return processed_paths
+
+
+def find_audiveris() -> str | None:
+    """
+    Audiveris 실행 파일을 찾는다.
+
+    우선순위: 환경변수 AUDIVERIS_PATH → PATH(audiveris) → 윈도우 기본 설치 경로.
+    못 찾으면 None을 반환한다(호출부에서 Oemer로 폴백할 수 있게).
+    """
+
+    env_path = os.environ.get("AUDIVERIS_PATH")
+    if env_path and Path(env_path).exists():
+        return env_path
+
+    for name in ("audiveris", "Audiveris"):
+        found = shutil.which(name)
+        if found:
+            return found
+
+    candidates = [
+        # windowsConsole .msi: 루트에 바로 설치됨
+        r"C:\Program Files\Audiveris\Audiveris.exe",
+        r"C:\Program Files\Audiveris\Audiveris.bat",
+        r"C:\Program Files (x86)\Audiveris\Audiveris.exe",
+        # 일반 .msi / 압축본: bin\ 아래
+        r"C:\Program Files\Audiveris\bin\Audiveris.bat",
+        r"C:\Program Files\Audiveris\bin\Audiveris.exe",
+        r"C:\Program Files (x86)\Audiveris\bin\Audiveris.bat",
+    ]
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return candidate
+    return None
+
+
+def run_audiveris_on_pdf(
+    pdf_path: str | Path,
+    output_dir: str | Path,
+    *,
+    max_pages: int | None = None,
+) -> list[Path]:
+    """
+    깨끗한 PDF 원본을 Audiveris 배치 모드로 돌려 MusicXML(.mxl)을 추출한다.
+
+    Audiveris는 Oemer보다 인쇄된(디지털) 악보 PDF에서 정확도가 높다.
+    스캔/사진 이미지는 Oemer 경로(run_oemer_on_pages)를 쓴다.
+    """
+
+    audiveris = find_audiveris()
+    if audiveris is None:
+        raise RuntimeError(
+            "Audiveris를 찾을 수 없습니다. 설치 후 PATH에 추가하거나 "
+            "AUDIVERIS_PATH 환경변수에 실행 파일 경로를 지정하세요."
+        )
+
+    pdf_path = Path(pdf_path)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # -batch: GUI 없이 실행, -export: MusicXML로 내보내기, -output: 출력 폴더
+    command = [audiveris, "-batch", "-export", "-output", str(output_dir), str(pdf_path)]
+    print(f"[audiveris] {pdf_path.name} 처리 중...")
+    result = subprocess.run(command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        tail = (result.stderr or result.stdout or "")[-800:]
+        raise RuntimeError(f"Audiveris 실행 실패 (code {result.returncode}):\n{tail}")
+
+    # Audiveris는 book 폴더 구조로 .mxl/.musicxml을 생성한다(하위 폴더 포함).
+    produced = sorted(output_dir.rglob("*.mxl"), key=page_sort_key) + \
+        sorted(output_dir.rglob("*.musicxml"), key=page_sort_key)
+    if not produced:
+        raise RuntimeError("Audiveris가 MusicXML을 생성하지 못했습니다. (악보 인식 실패 가능)")
+
+    if max_pages is not None:
+        produced = produced[:max_pages]
+    return produced
 
 
 def run_oemer_on_pages(
@@ -831,11 +908,26 @@ def parse_score_file(
         # 이미 구조화된 악보 파일이면 Oemer 없이 바로 파싱한다. 서비스에서 가장 빠른 경로다.
         internal_data = parse_musicxml_to_json(input_path, overrides=overrides)
     elif suffix == ".pdf" or suffix in SUPPORTED_IMAGE_EXTENSIONS:
-        # 이미지 계열은 전처리 -> Oemer -> MusicXML -> JSON 순서로 처리한다.
-        pages_dir = work_dir / "processed_pages"
+        # 입력 종류에 따라 OMR 엔진을 분기한다.
+        #  - PDF(깨끗한 디지털 원본) → Audiveris (정확도 높음)
+        #  - JPG/PNG(사진·스캔)      → 전처리 후 Oemer
         xml_dir = work_dir / "musicxml"
-        page_paths = preprocess_score_file(input_path, pages_dir, dpi=dpi, max_pages=max_omr_pages)
-        xml_paths = run_oemer_on_pages(page_paths, xml_dir, max_pages=max_omr_pages)
+
+        if suffix == ".pdf":
+            audiveris = find_audiveris()
+            if audiveris is not None:
+                xml_paths = run_audiveris_on_pdf(input_path, xml_dir, max_pages=max_omr_pages)
+            else:
+                # Audiveris 미설치 시 Oemer로 폴백 (서비스가 멈추지 않게)
+                print("[warn] Audiveris를 찾을 수 없어 Oemer로 폴백합니다.")
+                pages_dir = work_dir / "processed_pages"
+                page_paths = preprocess_score_file(input_path, pages_dir, dpi=dpi, max_pages=max_omr_pages)
+                xml_paths = run_oemer_on_pages(page_paths, xml_dir, max_pages=max_omr_pages)
+        else:
+            # 이미지 계열은 전처리 -> Oemer -> MusicXML 순서로 처리한다.
+            pages_dir = work_dir / "processed_pages"
+            page_paths = preprocess_score_file(input_path, pages_dir, dpi=dpi, max_pages=max_omr_pages)
+            xml_paths = run_oemer_on_pages(page_paths, xml_dir, max_pages=max_omr_pages)
 
         page_results = []
         for page_index, xml_path in enumerate(xml_paths, start=1):

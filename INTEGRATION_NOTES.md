@@ -57,6 +57,21 @@ python -m http.server 5500
 - 개발 중에는 F12 → Network → **Disable cache** 켜두기 (JS 캐시 문제 방지).
 - MIDI는 크롬에서만 동작 (Web MIDI API).
 
+## OMR 엔진 분기 (PDF=Audiveris, 이미지=Oemer)
+입력 파일 종류에 따라 OMR 엔진을 자동으로 나눕니다. (`sheet_parser/score_pipeline.py`)
+
+| 입력 | 엔진 | 비고 |
+|---|---|---|
+| `.pdf` | **Audiveris** | 깨끗한 디지털 원본에 정확. PDF 전체를 한 번에 처리 |
+| `.jpg/.png/.jpeg` | **Oemer** | 사진·스캔. 전처리(흑백·대비·크롭) 후 인식 |
+| `.musicxml/.xml/.mxl` | 없음 | music21로 바로 파싱 |
+
+- **Audiveris 설치**: https://github.com/Audiveris/audiveris/releases 의
+  `Audiveris-5.x-windowsConsole-x86_64.msi`. 기본 경로(`C:\Program Files\Audiveris\`)면 자동 인식.
+  못 찾으면 `AUDIVERIS_PATH` 환경변수로 실행 파일 경로 지정. (Java 필요)
+- Audiveris가 없으면 PDF도 **경고 후 Oemer로 폴백**하므로 서비스는 멈추지 않음.
+- 검증: canon PDF(6페이지) → Audiveris → 101마디 / 1486음표 JSON 생성 확인.
+
 ## 알려진 한계
-- PDF/이미지 OMR은 1페이지만 처리(`max_omr_pages` 기본값). 다중 페이지는 추후.
+- Oemer 경로는 1페이지만 처리(`max_omr_pages` 기본값). Audiveris는 PDF 전체 처리.
 - 음자리표/임시표 등 시각 정보는 MusicXML(OSMD)에만 있고 채점 JSON에는 없음.
