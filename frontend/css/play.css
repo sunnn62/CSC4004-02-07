@@ -211,31 +211,48 @@ button { font-family: inherit; cursor: pointer; }
   background: white;
 }
 
-/* === 판정 배너 === */
+/* === 판정 배너 (일시정지 버튼 옆 인라인) === */
 .judgment-banner {
-  position: fixed;
-  top: 38%; left: 50%;
-  transform: translate(-50%, -50%) scale(0.7);
-  font-size: 36px; font-weight: 700;
-  padding: 10px 28px;
-  border-radius: 12px;
-  color: white;
+  min-width: 90px;
+  align-self: stretch;
+  margin: 2px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  border-radius: 9999px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  background: transparent;
+  color: transparent;
   opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
   pointer-events: none;
-  z-index: 1000;
-  letter-spacing: 1px;
-  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.15);
-}
-.judgment-banner.show {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
+  user-select: none;
 }
 
-.judgment-banner.accurate { background: rgba(45, 110, 78, 0.95); }   /* 초록 */
-.judgment-banner.fast     { background: rgba(232, 153, 71, 0.95); }  /* 주황 */
-.judgment-banner.slow     { background: rgba(232, 153, 71, 0.95); }  /* 주황 */
-.judgment-banner.wrong    { background: rgba(214, 69, 69, 0.95); }   /* 빨강 */
+.judgment-banner.show {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.judgment-banner.accurate {
+  background: var(--accent-green, #2D9D4E);
+  color: #FFFFFF;
+}
+
+.judgment-banner.fast,
+.judgment-banner.slow {
+  background: #F08A24;
+  color: #FFFFFF;
+}
+
+.judgment-banner.wrong {
+  background: var(--note-wrong, #D64545);
+  color: #FFFFFF;
+}
 
 /* === 일시정지 모달 === */
 .modal-overlay {
