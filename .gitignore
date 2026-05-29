@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Poppler binaries (Windows — 수동 설치)
+sheet_parser/poppler/
+
+# Backend uploads & generated data (keep directory structure via .gitkeep)
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/scores/*
+!backend/scores/.gitkeep
+backend/results/*
+!backend/results/.gitkeep
+
+# Claude Code
+.claude/
