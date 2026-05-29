@@ -5,8 +5,8 @@
 // USE_MOCK이 false면: 실제 백엔드(API_BASE)에 fetch
 // ============================================================
 
-const USE_MOCK = false;                       // 백엔드 켰으면 false, 안 켰으면 true
-const API_BASE = "http://localhost:8000";
+const USE_MOCK = false;                      // 백엔드 켰으면 false, 안 켰으면 true
+const API_BASE = "http://localhost:8001";
 
 const api = {
   // === 악보 업로드 ===

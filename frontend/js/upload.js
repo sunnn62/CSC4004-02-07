@@ -1,51 +1,53 @@
-const fileInput = document.getElementById("file-input");
-const dropZone  = document.getElementById("drop-zone");
-const fileInfo  = document.getElementById("file-info");
-const uploadBtn = document.getElementById("upload-btn");
+// ============================================================
+// 업로드 로직 — index.html의 method-card 구조에 맞춤
+//
+// 구조:
+//   .method-card[data-method=camera|library|pdf]  ← 클릭하면
+//   #file-camera / #file-library / #file-pdf       ← 해당 input 열림
+//   파일 선택되면 → 자동으로 업로드 시작 → 폴링 → play.html 이동
+// ============================================================
+
 const statusArea = document.getElementById("status");
 
-let selectedFile = null;
+// method → 파일 input 매핑
+const fileInputMap = {
+  camera:  document.getElementById("file-camera"),
+  library: document.getElementById("file-library"),
+  pdf:     document.getElementById("file-pdf"),
+};
 
-// === 파일 선택 (클릭 방식) ===
-dropZone.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", (e) => {
-  if (e.target.files.length > 0) handleFile(e.target.files[0]);
-});
-
-// === 드래그 앤 드롭 ===
-dropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZone.classList.add("dragging");
-});
-dropZone.addEventListener("dragleave", () => {
-  dropZone.classList.remove("dragging");
-});
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("dragging");
-  if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+// === method-card 클릭 → 해당 파일 input 열기 ===
+document.querySelectorAll(".method-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    const method = card.dataset.method;
+    const input = fileInputMap[method];
+    if (input) input.click();
+  });
 });
 
-// === 파일 검증 + 미리보기 ===
-function handleFile(file) {
-  if (!/\.(pdf|png|jpg|jpeg)$/i.test(file.name)) {
-    showStatus("error", "PDF나 이미지(PNG/JPG)만 지원해요.");
+// === 파일 선택되면 바로 업로드 ===
+Object.values(fileInputMap).forEach((input) => {
+  if (!input) return;
+  input.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
+    e.target.value = ""; // 같은 파일 다시 선택 가능하게 초기화
+  });
+});
+
+// === 파일 검증 + 업로드 → 폴링 → play.html 이동 ===
+async function handleFile(file) {
+  if (!/\.(pdf|png|jpg|jpeg|musicxml|xml|mxl)$/i.test(file.name)) {
+    showStatus("error", "지원 형식: PDF, 이미지(PNG/JPG), MusicXML 만 가능해요.");
     return;
   }
-  selectedFile = file;
-  fileInfo.innerHTML = `<strong>선택됨:</strong> ${file.name} <span class="size">${(file.size/1024).toFixed(1)} KB</span>`;
-  uploadBtn.disabled = false;
-  showStatus("info", "업로드 준비 완료");
-}
 
-// === 업로드 → 폴링 → play.html 이동 ===
-uploadBtn.addEventListener("click", async () => {
-  if (!selectedFile) return;
-  uploadBtn.disabled = true;
+  setCardsDisabled(true);
 
   try {
-    showStatus("loading", "업로드 중...");
-    const { scoreId } = await api.upload(selectedFile);
+    showStatus("loading", `"${file.name}" 업로드 중...`);
+    const { scoreId } = await api.upload(file);
 
     showStatus("loading", "악보 분석 중... (수십 초 걸릴 수 있어요)");
     await waitUntilDone(scoreId);
@@ -56,14 +58,14 @@ uploadBtn.addEventListener("click", async () => {
     }, 800);
   } catch (err) {
     showStatus("error", "❌ " + err.message);
-    uploadBtn.disabled = false;
+    setCardsDisabled(false);
   }
-});
+}
 
 // 폴링: 1.5초 간격으로 status 확인, "done"이 될 때까지 대기
 async function waitUntilDone(scoreId) {
   while (true) {
-    await new Promise(r => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1500));
     const { status } = await api.getStatus(scoreId);
     if (status === "done") return;
     if (status === "failed") throw new Error("악보 분석 실패");
@@ -71,7 +73,16 @@ async function waitUntilDone(scoreId) {
   }
 }
 
+function setCardsDisabled(disabled) {
+  document.querySelectorAll(".method-card").forEach((c) => {
+    c.disabled = disabled;
+    c.style.opacity = disabled ? "0.5" : "";
+    c.style.pointerEvents = disabled ? "none" : "";
+  });
+}
+
 function showStatus(type, message) {
+  if (!statusArea) return;
   statusArea.className = `status status-${type}`;
   statusArea.textContent = message;
 }
