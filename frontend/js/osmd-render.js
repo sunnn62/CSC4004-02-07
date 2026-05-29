@@ -1,4 +1,5 @@
 import { MidiComparatorService } from './d/MidiComparatorService.js';
+import { Stopwatch } from './stopwatch.js';
 
 // D 서비스 인스턴스 (bootstrap에서 생성, 모달 핸들러에서 사용)
 let service = null;
@@ -215,6 +216,7 @@ window.scoreView = {
     wrongNotes: stats.wrong,
     finishedNotes: currentNoteIndex,
     errorLog: errorLog,
+    elapsedSec: stopwatch.elapsedSec,
   };
   sessionStorage.setItem('practiceResult', JSON.stringify(result));
   window.location.href = 'result.html';
@@ -263,7 +265,6 @@ document.getElementById("btn-show-result")?.addEventListener("click", () => {
 
 
 // === 일시정지 모달 ===
-// === 일시정지 모달 ===
 function openPauseModal() {
   const total = stats.correct + stats.wrong;
   const acc = total === 0 ? 100 : Math.round(stats.correct / total * 100);
@@ -277,11 +278,13 @@ function openPauseModal() {
 
   document.getElementById("pause-modal").classList.add("show");
   service?.pause();
+  stopwatch.pause();
 }
 
 function closePauseModal() {
   document.getElementById("pause-modal").classList.remove("show");
   service?.resume();
+  stopwatch.start();                      // 추가 (내부에서 이어서 처리됨)
 }
 
 // 일시정지 버튼 → 모달 열기 (이 줄이 빠져있었음!)
@@ -293,13 +296,17 @@ document.getElementById("btn-resume")?.addEventListener("click", closePauseModal
 document.getElementById("btn-restart")?.addEventListener("click", () => {
   service?.restart();
   window.scoreView.reset();
-  closePauseModal();
+  stopwatch.reset();                      
+  closePauseModal();                      // 이 안에서 stopwatch.start() 자동 호출됨
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
   service?.stop();
+  stopwatch.pause();                      
   window.scoreView.showResultScreen();
 });
+
+const stopwatch = new Stopwatch(document.getElementById('timer'));
 
 // === 시작 ===
 async function bootstrap() {
@@ -342,6 +349,13 @@ async function bootstrap() {
 function setupComparator(scoreJson) {
   const settings = JSON.parse(sessionStorage.getItem('playSettings') || '{}');
 
+  // 🆕 스톱워치 총 길이 세팅 (배속 적용)
+  const baseDuration = scoreJson?.metadata?.estimatedDurationSec;
+  const speed = settings.speedMultiplier ?? 1.0;
+  if (baseDuration) {
+    stopwatch.setTotal(baseDuration / speed);
+  }
+
   window.scoreView.attachScoreJson(scoreJson);   // noteIdMap 구축 (현재 fallback 색칠)
 
   service = new MidiComparatorService(scoreJson, {
@@ -354,11 +368,16 @@ function setupComparator(scoreJson) {
     window.scoreView.highlightNote(noteId, pitchResult, timingResult);
     window.scoreView.advanceCursor(noteId);
   };
+
   service.onFinish = () => {
+    stopwatch.pause();                    // 🆕 곡 끝나면 시간 멈춤
     window.scoreView.showResultScreen();
   };
 
-  service.start().catch(e => console.error("MIDI 연결 실패:", e));
+  service.start()
+  .then(() => stopwatch.start())          // 🆕 MIDI 연결되면 스톱워치 시작
+  .catch(e => console.error("MIDI 연결 실패:", e));
+
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
 
