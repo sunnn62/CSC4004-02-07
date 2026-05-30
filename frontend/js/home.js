@@ -33,7 +33,7 @@ async function fetchScores() {
 
     grid.innerHTML = scores.map(s => `
       <div class="score-card" data-id="${s.scoreId}">
-        <a href="play.html?scoreId=${s.scoreId}" class="score-card-inner">
+        <a href="detail.html?scoreId=${s.scoreId}" class="score-card-inner">
           <div class="score-thumb">${thumbSvg}</div>
           <div class="score-name">${s.title}</div>
           <div class="score-meta">${s.tempo ? `♩=${Math.round(s.tempo)}` : ''}${s.timeSignature ? ' · ' + s.timeSignature : ''}</div>
