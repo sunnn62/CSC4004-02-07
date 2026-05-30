@@ -23,6 +23,7 @@ let currentNoteIndex = 0;
 let systemMeasureRanges = [];        // 각 줄에 속한 measure 번호 [{first, last}]
 let currentSystemIndex = 0;
 
+
 // === 내부 헬퍼 ===
 function colorGraphicalNote(gNote, color) {
   const svgEl = gNote.getSVGGElement?.();
@@ -163,6 +164,7 @@ function getSystemIndexForMeasure(measureNumber) {
   return -1;
 }
 
+
 // N번째 줄을 화면 최상단에 오게 .score-area 스크롤
 function scrollToSystem(systemIndex) {
   if (systemIndex < 0 || systemIndex >= systemMeasureRanges.length) return;
@@ -192,15 +194,18 @@ function scrollToSystem(systemIndex) {
 
   scrollArea.scrollTo({ top: targetTop, behavior: 'smooth' });
   console.log(`✅ scrollTo top=${targetTop.toFixed(0)} (system ${systemIndex}, measure ${measureRange.first})`);
+
 }
 
 // 커서 위치 보고 줄 바뀌었으면 스크롤
 function updateAutoScroll() {
   const measureNum = getCurrentCursorMeasureNumber();
   const newSystem = getSystemIndexForMeasure(measureNum);
+
   console.log(`커서 → measure ${measureNum} / system ${newSystem} (현재 ${currentSystemIndex})`);
   if (newSystem >= 0 && newSystem !== currentSystemIndex) {
     console.log(`스크롤 발동: system ${currentSystemIndex} → ${newSystem}`);
+
     currentSystemIndex = newSystem;
     scrollToSystem(currentSystemIndex);
   }
@@ -246,11 +251,13 @@ async function loadScore(source) {
 
   updateSongInfo();
 
+
   // 자동 스크롤 셋업
   captureSystemLayout();
   currentSystemIndex = 0;
   const scrollArea = document.querySelector('.score-area');
   if (scrollArea) scrollArea.scrollTop = 0;
+
 
   console.log(`✅ 로딩 완료. 음표 ${graphicalNotes.length}개, 마디 ${graphicalNotesByMeasure.size}개`);
 }
@@ -373,6 +380,7 @@ document.getElementById("btn-next-10")?.addEventListener("click", async () => {
     await new Promise(r => setTimeout(r, 100));
   }
 });
+
 
 document.getElementById("btn-show-result")?.addEventListener("click", () => {
   window.scoreView.showResultScreen();

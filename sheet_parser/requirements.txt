@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+music21>=9.0
+pdf2image>=1.17
+Pillow>=10.0
+oemer>=0.1.6
+onnxruntime>=1.17   # GPU 사용 시: onnxruntime-gpu 로 교체

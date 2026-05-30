@@ -1,0 +1,71 @@
+1. metadata (전역 메타 데이터)
+"metadata": {
+    "title": "Canon in D",			#곡(악보) 제목
+    "tempo": 100,				#BPM 연주 템포, 메트로놈 기능 혹은 악보 넘어가는 기준
+    "timeSignature": "4/4",		#박자표
+    "keySignature": "D major"		#조표
+  },
+
+2. 마디별 연주 데이터
+"measures": [
+    {
+      "number": 1,				#마디 번호
+      "repeatStart": false,			#도돌이표 시작 여부
+      "repeatEnd": false,			#도돌이표 종료 여부
+      "tempos":				#템포 변화 여부 목록(2-1)
+      "dynamics":  				#셈여림 기호 목록(2-2)
+      "pedals":				#페달 지시어 목록(2-3)
+
+2-1. 템포 변화 여부 목록
+"tempos": [
+        {
+          "bpm": 100.0,			#변경되어야할 빠르기
+          "text": null,			#악보에 적힌 지시어 문자열(eg. "Andante")
+          "startBeat": 0.0,			#해당 지시어가 발생하는 마디 내 박자			->
+          "absoluteStartBeat": 0.0	#해당 지시어가 발생하는 시작 기준 누적 박자		-> 악보 넘기는 빠르기 등 타이머 속도를 이 시점으로 실시간으로 가속/감속하는 역할
+        }
+      ],
+
+2-2. 셈여림 기호 목록
+"dynamics": [
+        {
+          "mark": "p",			#악보상 기호(eg. p, mp, f, mp 등)
+          "targetVelocity": 49,		#기호를 미디 표준 강도로 치환한 목표값(eg. f->96, p->49)
+          "startBeat": 0.0,			#생략
+          "absoluteStartBeat": 0.0	#생략
+        }
+      ],
+
+2-3. 페달 지시어 목록
+"pedals": [],					#start: 페달 밟기, stop: 페달 떼기
+
+
+
+3. note
+{
+          "id": "n2",				#음표 식별자
+          "pitches": [			#음정, 안에 값이 비어있으면 쉼표, 값 자체는 midi 노트 번호로 공통 식별자
+            50
+          ],
+          "duration": 0.5,			#지속 길이
+          "startBeat": 0.0,			#해당 마디 안에서 음표가 등장하는 위치
+          "absoluteStartBeat": 0.0,	#곡 시작 지점을 기준으로 누적된 위치
+          "hand": "left",			#왼손 오른속 악보 구별
+          "isRest": false			#쉼표 구별, 쉼표라면 duration만큼 쉼
+},
+
+{
+          "id": "n2",				#음표 식별자
+          "pitches": [			#음정, 안에 값이 비어있으면 쉼표, 값 자체는 midi 노트 번호로 공통 식별자
+
+            50
+          ],
+          "duration": 0.5,			#지속 길이
+          "startBeat": 0.0,			#해당 마디 안에서 음표가 등장하는 위치
+          "absoluteStartBeat": 0.0,	#곡 시작 지점을 기준으로 누적된 위치
+          "hand": "left",			#왼손 오른속 악보 구별
+          "isRest": false,			#쉼표 구별, 쉼표라면 duration만큼 쉼
+          "tie": null,				#붙임줄 상태(stop이나 continue인 음표는 새로 누르는 타건 대상에서 제거해야함, 쉽게 말하면 붙임줄로 이어져 있는 두 음표의 나중 음표는 치면 안 됨)
+          "isGrace": false,			#꾸밈음 여부(꾸밈음이면 박자 판정 오차를 엄청 넓게 주거나 해야할 듯)
+          "articulations": []		#스타카토같은거
+        },
