@@ -1,5 +1,6 @@
 import { MidiComparatorService } from './d/MidiComparatorService.js';
 import { Stopwatch } from './stopwatch.js';
+import { Metronome } from './metronome.js';
 
 // D 서비스 인스턴스 (bootstrap에서 생성, 모달 핸들러에서 사용)
 let service = null;
@@ -329,12 +330,13 @@ window.scoreView = {
   osmd.cursor.reset();
   stats = { correct: 0, wrong: 0 };
   currentNoteIndex = 0;
-  errorLog = [];      // 🆕 추가
+  errorLog = [];
   updateStatsUI();
   updateProgressUI();
   currentSystemIndex = 0;
   const scrollArea = document.querySelector('.score-area');
   if (scrollArea) scrollArea.scrollTop = 0;
+  metronome.reset();
   }
 };
 
@@ -394,12 +396,14 @@ function openPauseModal() {
   document.getElementById("pause-modal").classList.add("show");
   service?.pause();
   stopwatch.pause();
+  metronome.pauseForModal();
 }
 
 function closePauseModal() {
   document.getElementById("pause-modal").classList.remove("show");
   service?.resume();
-  stopwatch.start();                      // 추가 (내부에서 이어서 처리됨)
+  stopwatch.start();
+  metronome.resumeFromModal();
 }
 
 // 일시정지 버튼 → 모달 열기 (이 줄이 빠져있었음!)
@@ -417,11 +421,50 @@ document.getElementById("btn-restart")?.addEventListener("click", () => {
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
   service?.stop();
-  stopwatch.pause();                      
+  stopwatch.pause();
+  metronome.reset();
   window.scoreView.showResultScreen();
 });
 
 const stopwatch = new Stopwatch(document.getElementById('timer'));
+
+// === 메트로놈 ===
+const metronome = new Metronome();
+
+// 버튼 활성 상태 시각 표시
+metronome.onStateChange = (running) => {
+  document.getElementById('btn-metronome')?.classList.toggle('active', running);
+};
+
+// 토글 버튼
+document.getElementById('btn-metronome')?.addEventListener('click', () => {
+  metronome.toggle();
+});
+
+// 악보의 박자표/템포 + 사용자 배속을 메트로놈에 반영
+function setupMetronome() {
+  const settings = JSON.parse(sessionStorage.getItem('playSettings') || '{}');
+  const speed = settings.speedMultiplier ?? 1.0;
+
+  let baseTempo = 120;
+  let numerator = 4;
+  let denominator = 4;
+
+  try {
+    baseTempo = osmd.Sheet?.DefaultStartTempoInBpm || 120;
+    const ts = osmd.Sheet?.SourceMeasures?.[0]?.ActiveTimeSignature;
+    if (ts) {
+      numerator = ts.Numerator ?? ts.numerator ?? 4;
+      denominator = ts.Denominator ?? ts.denominator ?? 4;
+    }
+  } catch (e) {
+    console.warn('메트로놈 설정 읽기 실패, 기본값 사용:', e);
+  }
+
+  metronome.setTempo(baseTempo * speed);
+  metronome.setTimeSignature(numerator, denominator);
+  console.log(`✅ 메트로놈 설정: ♩=${baseTempo}×${speed}=${(baseTempo*speed).toFixed(1)} BPM, ${numerator}/${denominator}`);
+}
 
 // === 시작 ===
 async function bootstrap() {
@@ -452,6 +495,10 @@ async function bootstrap() {
       try { await loadScore("assets/canon.mxl"); } catch (e) { console.error(e); }
     }
   }
+
+  // 메트로놈 설정 (악보의 박자표/템포 + 사용자 배속 반영)
+  setupMetronome();
+
 
   // 2) 🆕 D 비교 엔진 셋업 (scoreJson 필요)
   let scoreJson = null;
@@ -498,7 +545,8 @@ function setupComparator(scoreJson) {
   };
 
   service.onFinish = () => {
-    stopwatch.pause();                    // 🆕 곡 끝나면 시간 멈춤
+    stopwatch.pause();
+    metronome.reset();
     window.scoreView.showResultScreen();
   };
 
