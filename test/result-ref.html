@@ -240,33 +240,54 @@
     .timing-bar-fill.slow    { background: #61dafb; }
     .timing-row .count { width: 30px; text-align: right; color: #666; font-size: 0.78rem; }
 
-    /* ── 오답 리스트 ── */
+    /* ── 오답 리스트 (마디별 그룹) ── */
     .error-list {
       list-style: none;
       display: flex;
       flex-direction: column;
       gap: 8px;
+      max-height: 340px;   /* 너무 길어지면 스크롤 */
+      overflow-y: auto;
+      padding-right: 4px;
     }
-    .error-item {
+    .error-list::-webkit-scrollbar { width: 4px; }
+    .error-list::-webkit-scrollbar-thumb { background: #2a3a5a; border-radius: 2px; }
+
+    /* 마디 그룹 카드 */
+    .measure-group {
       background: #1a0f0f;
       border: 1px solid #3a1a1a;
       border-radius: 8px;
       padding: 10px 14px;
-      font-size: 0.83rem;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
-    .error-measure {
+    .measure-num {
       background: #7a2222;
       color: #ffaaaa;
       font-size: 0.72rem;
       font-weight: 700;
-      padding: 2px 8px;
+      padding: 3px 9px;
       border-radius: 4px;
       white-space: nowrap;
+      min-width: 52px;
+      text-align: center;
     }
-    .error-detail { color: #ccc; }
+    .hand-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .hand-tag {
+      font-size: 0.78rem;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    .hand-tag.right { background: #1a2a1a; color: #80cfa0; border: 1px solid #2a4a2a; }
+    .hand-tag.left  { background: #1a1a2a; color: #80a0cf; border: 1px solid #2a2a4a; }
+
     .error-empty {
       color: #4caf50;
       font-size: 0.88rem;
@@ -431,8 +452,15 @@ const MOCK = {
   finishedNotes: 64,
   errorLog     : [
     { measureNumber: 3,  hand: '오른손', expectedMidi: 64 },
+    { measureNumber: 3,  hand: '오른손', expectedMidi: 67 },
+    { measureNumber: 3,  hand: '왼손',   expectedMidi: 48 },
     { measureNumber: 7,  hand: '왼손',   expectedMidi: 55 },
+    { measureNumber: 7,  hand: '왼손',   expectedMidi: 53 },
     { measureNumber: 11, hand: '오른손', expectedMidi: 72 },
+    { measureNumber: 11, hand: '오른손', expectedMidi: 69 },
+    { measureNumber: 11, hand: '오른손', expectedMidi: 67 },
+    { measureNumber: 15, hand: '오른손', expectedMidi: 64 },
+    { measureNumber: 15, hand: '왼손',   expectedMidi: 50 },
   ],
   elapsedSec   : 154,
   timingCorrect: 38,
@@ -516,20 +544,43 @@ document.getElementById('tcnt-slow'   ).textContent  = data.timingSlow    ?? 0;
 document.getElementById('elapsed-time').textContent =
   data.elapsedSec != null ? formatTime(data.elapsedSec) : '--:--';
 
-// 오답 리스트
+// 오답 리스트 — 마디별 그룹핑
 const errors = data.errorLog ?? [];
-document.getElementById('error-count-badge').textContent = `${errors.length}곳`;
 const listEl = document.getElementById('error-list');
+
 if (errors.length > 0) {
-  listEl.innerHTML = '';
+  // 마디 번호 기준으로 그룹핑: { 마디번호 → { right: n, left: n } }
+  const groups = new Map();
   errors.forEach(e => {
-    const li = document.createElement('li');
-    li.className = 'error-item';
-    li.innerHTML =
-      `<span class="error-measure">${e.measureNumber ?? '?'}마디</span>` +
-      `<span class="error-detail">${e.hand ?? '?'} — 기대음: ${midiToKo(e.expectedMidi)}</span>`;
-    listEl.appendChild(li);
+    const m = e.measureNumber ?? 0;
+    if (!groups.has(m)) groups.set(m, { right: 0, left: 0 });
+    const g = groups.get(m);
+    if (e.hand === '오른손') g.right++;
+    else                     g.left++;
   });
+
+  // 배지: 마디 수 기준
+  document.getElementById('error-count-badge').textContent = `${groups.size}마디`;
+
+  listEl.innerHTML = '';
+  // 마디 번호 오름차순 정렬
+  [...groups.entries()]
+    .sort(([a], [b]) => a - b)
+    .forEach(([measure, { right, left }]) => {
+      const li = document.createElement('li');
+      li.className = 'measure-group';
+
+      const tags = [];
+      if (right > 0) tags.push(`<span class="hand-tag right">오른손 ${right}개</span>`);
+      if (left  > 0) tags.push(`<span class="hand-tag left">왼손 ${left}개</span>`);
+
+      li.innerHTML =
+        `<span class="measure-num">${measure}마디</span>` +
+        `<div class="hand-tags">${tags.join('')}</div>`;
+      listEl.appendChild(li);
+    });
+} else {
+  document.getElementById('error-count-badge').textContent = '0마디';
 }
 
 // ── 버튼 ────────────────────────────────────────────────────
