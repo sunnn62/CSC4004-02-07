@@ -20,10 +20,8 @@ let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
 
 // 자동 스크롤 상태
-let systemYPositions = [];          // 각 줄(system)의 y 좌표 (픽셀)
 let systemMeasureRanges = [];        // 각 줄에 속한 measure 번호 [{first, last}]
 let currentSystemIndex = 0;
-const OSMD_UNIT_PX = 10;             // OSMD 단위 → 픽셀 변환 상수
 
 // === 내부 헬퍼 ===
 function colorGraphicalNote(gNote, color) {
@@ -128,9 +126,8 @@ function getCurrentCursorMeasureNumber() {
   }
 }
 
-// 자동 스크롤: 각 줄(system) 위치와 그 줄에 속한 measure 범위 캐싱
+// 자동 스크롤: 각 줄(system)에 속한 measure 범위만 캐싱 (위치는 스크롤할 때 DOM에서 읽음)
 function captureSystemLayout() {
-  systemYPositions = [];
   systemMeasureRanges = [];
 
   const pages = osmd.GraphicSheet?.MusicPages || [];
@@ -145,37 +142,16 @@ function captureSystemLayout() {
       }
       if (measures.length === 0) continue;
 
-      const y = system.PositionAndShape?.AbsolutePosition?.y ?? 0;
-      systemYPositions.push(y * OSMD_UNIT_PX);
       systemMeasureRanges.push({
         first: Math.min(...measures),
         last: Math.max(...measures),
       });
     }
   }
-  console.log(`줄(system) ${systemYPositions.length}개 감지`);
+  console.log(`✅ 줄(system) ${systemMeasureRanges.length}개 감지`);
 }
 
-// 컨테이너 높이를 2줄로 고정 + transition 셋업
-function applyTwoLineView() {
-  if (systemYPositions.length < 2) return;
-  
-  // 3번째 줄의 시작 y를 컨테이너 끝으로 쓰면 정확함
-  // (시스템마다 위/아래 여백이 달라서 단순 곱셈은 부정확)
-  const containerHeight = systemYPositions.length >= 3
-    ? systemYPositions[2]
-    : (systemYPositions[1] - systemYPositions[0]) * 2;
-  
-  const container = document.getElementById('osmd-container');
-  container.style.height = `${containerHeight}px`;
-  container.style.overflow = 'hidden';
-  
-  console.log(`컨테이너 높이: ${containerHeight}px (시스템 ${systemYPositions.length}개)`);
-  console.log(`시스템 y좌표:`, systemYPositions);
 
-  const svg = container.querySelector('svg');
-  if (svg) svg.style.transition = 'transform 0.4s ease';
-}
 
 // measure 번호 → 어느 줄에 속하는지
 function getSystemIndexForMeasure(measureNumber) {
@@ -187,20 +163,35 @@ function getSystemIndexForMeasure(measureNumber) {
   return -1;
 }
 
-// N번째 줄을 화면 최상단에 오게 SVG 이동
+// N번째 줄을 화면 최상단에 오게 .score-area 스크롤
 function scrollToSystem(systemIndex) {
-  if (systemYPositions.length === 0) return;
-  const maxIndex = Math.max(0, systemYPositions.length - 2);
-  const idx = Math.max(0, Math.min(systemIndex, maxIndex));
-  const targetY = systemYPositions[idx];
+  if (systemIndex < 0 || systemIndex >= systemMeasureRanges.length) return;
 
-  const svg = document.querySelector('#osmd-container svg');
-  if (!svg) {
-    console.warn(`scrollToSystem(${systemIndex}): SVG 못 찾음`);
+  const measureRange = systemMeasureRanges[systemIndex];
+  const notes = graphicalNotesByMeasure.get(measureRange.first);
+  if (!notes || notes.length === 0) {
+    console.warn(`! scrollToSystem(${systemIndex}): measure ${measureRange.first}에 노트 없음`);
     return;
   }
-  svg.style.transform = `translateY(${-targetY}px)`;
-  console.log(`translateY(${-targetY}px) 적용됨 (system ${idx})`);
+
+  // 이 시스템 첫 음표의 DOM 요소
+  const noteEl = notes[0].getSVGGElement?.();
+  if (!noteEl) {
+    console.warn(`! scrollToSystem(${systemIndex}): SVG 요소 못 찾음`);
+    return;
+  }
+
+  // .score-area 안에서 이 음표가 상단에 오도록 스크롤
+  const scrollArea = document.querySelector('.score-area');
+  if (!scrollArea) return;
+
+  const noteRect = noteEl.getBoundingClientRect();
+  const areaRect = scrollArea.getBoundingClientRect();
+  const offsetWithinArea = noteRect.top - areaRect.top + scrollArea.scrollTop;
+  const targetTop = Math.max(0, offsetWithinArea - 60);  // 30px 위쪽 여백 (다이내믹 마크 등 보이게)
+
+  scrollArea.scrollTo({ top: targetTop, behavior: 'smooth' });
+  console.log(`✅ scrollTo top=${targetTop.toFixed(0)} (system ${systemIndex}, measure ${measureRange.first})`);
 }
 
 // 커서 위치 보고 줄 바뀌었으면 스크롤
@@ -255,11 +246,11 @@ async function loadScore(source) {
 
   updateSongInfo();
 
-  // 🆕 자동 스크롤 셋업
+  // 자동 스크롤 셋업
   captureSystemLayout();
-  applyTwoLineView();
   currentSystemIndex = 0;
-  scrollToSystem(0);
+  const scrollArea = document.querySelector('.score-area');
+  if (scrollArea) scrollArea.scrollTop = 0;
 
   console.log(`✅ 로딩 완료. 음표 ${graphicalNotes.length}개, 마디 ${graphicalNotesByMeasure.size}개`);
 }
@@ -341,12 +332,47 @@ window.scoreView = {
   errorLog = [];      // 🆕 추가
   updateStatsUI();
   updateProgressUI();
-  currentSystemIndex = 0;                // 🆕
-  scrollToSystem(0);  
-
-}
+  currentSystemIndex = 0;
+  const scrollArea = document.querySelector('.score-area');
+  if (scrollArea) scrollArea.scrollTop = 0;
+  }
 };
 
+
+// === 🛠 데모 버튼 핸들러 (배포 전 제거) ===
+document.getElementById("btn-next")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '정확');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-fast")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '빠름');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-slow")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '느림');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-wrong")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'wrong', null);
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-prev")?.addEventListener("click", () => {
+  osmd.cursor.previous();
+  currentNoteIndex = Math.max(0, currentNoteIndex - 1);
+  updateProgressUI();
+  updateAutoScroll();
+});
+document.getElementById("btn-reset")?.addEventListener("click", () => {
+  window.scoreView.reset();
+});
+// 자동 진행 — 100ms 간격으로 10번 (스크롤 transition 보기 좋게)
+document.getElementById("btn-next-10")?.addEventListener("click", async () => {
+  for (let i = 0; i < 10; i++) {
+    window.scoreView.highlightNote(null, 'correct', '정확');
+    window.scoreView.advanceCursor(null);
+    await new Promise(r => setTimeout(r, 100));
+  }
+});
 
 document.getElementById("btn-show-result")?.addEventListener("click", () => {
   window.scoreView.showResultScreen();
@@ -485,11 +511,11 @@ function setupComparator(scoreJson) {
 
 // 디버그용
 window._debug = {
-  get systemYPositions() { return systemYPositions; },
   get systemMeasureRanges() { return systemMeasureRanges; },
   get currentSystemIndex() { return currentSystemIndex; },
   get currentNoteIndex() { return currentNoteIndex; },
 };
+
 window.osmd = osmd;     // 콘솔에서 osmd 직접 만지게
 
 bootstrap();
