@@ -213,15 +213,43 @@ body {
   background: var(--bg-card);
   border-radius: var(--radius-md);
   padding: 12px;
-  text-decoration: none;
   color: inherit;
   transition: transform 0.15s, box-shadow 0.15s;
-  cursor: pointer;
   display: block;
+  position: relative;
 }
 .score-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+.score-card-inner {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+.score-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0,0,0,0.08);
+  border: none;
+  border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.score-card:hover .score-delete-btn {
+  display: flex;
+}
+.score-delete-btn:hover {
+  background: #ff4d4d;
+  color: #fff;
 }
 .score-thumb {
   aspect-ratio: 4 / 3;

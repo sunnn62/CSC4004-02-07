@@ -394,6 +394,51 @@ async def get_musicxml(score_id: str):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/scores  — 완료된 악보 목록
+# ---------------------------------------------------------------------------
+@app.get("/api/scores")
+async def list_scores():
+    scores = []
+    for status_file in glob.glob(os.path.join(SCORES_DIR, "*_status.json")):
+        score_id = os.path.basename(status_file).replace("_status.json", "")
+        data_path = _get_data_path(score_id)
+        if not os.path.exists(data_path):
+            continue
+        with open(data_path, encoding="utf-8") as f:
+            data = json.load(f)
+        meta = data.get("metadata", {})
+        scores.append({
+            "scoreId": score_id,
+            "title": meta.get("title", "제목 없음"),
+            "tempo": meta.get("tempo"),
+            "timeSignature": meta.get("timeSignature"),
+        })
+    return scores
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/score/{scoreId}  — 악보 삭제
+# ---------------------------------------------------------------------------
+@app.delete("/api/score/{score_id}")
+async def delete_score(score_id: str):
+    _assert_score_exists(score_id)
+    # status, data 파일 삭제
+    for path in [_get_status_path(score_id), _get_data_path(score_id)]:
+        if os.path.exists(path):
+            os.remove(path)
+    # 업로드 원본 파일 삭제
+    for ext in ALLOWED_EXTENSIONS:
+        path = os.path.join(UPLOAD_DIR, f"{score_id}.{ext}")
+        if os.path.exists(path):
+            os.remove(path)
+    # 작업 디렉토리 삭제
+    work_dir = os.path.join(SCORES_DIR, f"{score_id}_work")
+    if os.path.exists(work_dir):
+        shutil.rmtree(work_dir)
+    return {"message": "삭제 완료"}
+
+
+# ---------------------------------------------------------------------------
 # POST /api/result
 # ---------------------------------------------------------------------------
 @app.post("/api/result")

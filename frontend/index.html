@@ -34,12 +34,6 @@
         <p class="subtitle">이미지나 PDF를 인식해서 음표를 자동으로 분석해 드려요.</p>
 
         <div class="method-grid">
-          <button class="method-card" data-method="camera">
-            <div class="method-icon">📷</div>
-            <div class="method-label">카메라로 촬영</div>
-            <div class="method-hint">종이 악보를 바로 찍어주세요</div>
-          </button>
-
           <button class="method-card" data-method="library">
             <div class="method-icon">🖼️</div>
             <div class="method-label">사진 라이브러리</div>
@@ -51,12 +45,18 @@
             <div class="method-label">PDF 파일</div>
             <div class="method-hint">파일에서 PDF를 불러와요</div>
           </button>
+
+          <button class="method-card" data-method="xml">
+            <div class="method-icon">🎼</div>
+            <div class="method-label">MusicXML</div>
+            <div class="method-hint">.xml / .mxl 악보 파일</div>
+          </button>
         </div>
 
         <!-- 숨겨진 input들 (각 카드마다 다른 동작) -->
-        <input type="file" id="file-camera"  accept="image/*" capture="environment" hidden>
         <input type="file" id="file-library" accept="image/*" hidden>
         <input type="file" id="file-pdf"     accept=".pdf"    hidden>
+        <input type="file" id="file-xml"     accept=".xml,.mxl,.musicxml" hidden>
 
         <div id="status" class="status"></div>
       </div>
