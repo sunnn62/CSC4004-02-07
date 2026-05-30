@@ -14,6 +14,7 @@ const fileInputMap = {
   camera:  document.getElementById("file-camera"),
   library: document.getElementById("file-library"),
   pdf:     document.getElementById("file-pdf"),
+  xml:     document.getElementById("file-xml"),
 };
 
 // === method-card 클릭 → 해당 파일 input 열기 ===
