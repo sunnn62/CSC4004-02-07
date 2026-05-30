@@ -20,10 +20,9 @@ let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
 
 // 자동 스크롤 상태
-let systemYPositions = [];          // 각 줄(system)의 y 좌표 (픽셀)
 let systemMeasureRanges = [];        // 각 줄에 속한 measure 번호 [{first, last}]
 let currentSystemIndex = 0;
-const OSMD_UNIT_PX = 10;             // OSMD 단위 → 픽셀 변환 상수
+
 
 // === 내부 헬퍼 ===
 function colorGraphicalNote(gNote, color) {
@@ -108,18 +107,28 @@ function updateSongInfo() {
   metaEl.textContent = `${totalMeasures}마디 · 양손 · ♩=${tempo}`;
 }
 
-// 커서 마디 추적
+// 커서 마디 추적 
 function getCurrentCursorMeasureNumber() {
   try {
-    const notes = osmd.cursor.NotesUnderCursor();
-    if (!notes || notes.length === 0) return null;
-    return notes[0].ParentVoiceEntry?.ParentSourceStaffEntry?.VerticalContainerParent?.ParentSourceMeasure?.MeasureNumber ?? null;
-  } catch (e) { return null; }
+    const iter = osmd.cursor.iterator;
+    if (!iter) return null;
+    
+    // OSMD 버전에 따라 케이스 다를 수 있어 둘 다 시도
+    const idx = iter.CurrentMeasureIndex ?? iter.currentMeasureIndex;
+    if (idx == null || idx < 0) return null;
+    
+    // SourceMeasures에서 실제 measure 객체 가져와서 MeasureNumber 사용
+    // (idx가 0-based, MeasureNumber는 보통 1-based여서 매핑 필요)
+    const measure = osmd.Sheet?.SourceMeasures?.[idx];
+    return measure?.MeasureNumber ?? (idx + 1);
+  } catch (e) {
+    console.warn('getCurrentCursorMeasureNumber 실패:', e);
+    return null;
+  }
 }
 
-// 🆕 자동 스크롤: 각 줄(system) 위치와 그 줄에 속한 measure 범위 캐싱
+// 자동 스크롤: 각 줄(system)에 속한 measure 범위만 캐싱 (위치는 스크롤할 때 DOM에서 읽음)
 function captureSystemLayout() {
-  systemYPositions = [];
   systemMeasureRanges = [];
 
   const pages = osmd.GraphicSheet?.MusicPages || [];
@@ -134,30 +143,18 @@ function captureSystemLayout() {
       }
       if (measures.length === 0) continue;
 
-      const y = system.PositionAndShape?.AbsolutePosition?.y ?? 0;
-      systemYPositions.push(y * OSMD_UNIT_PX);
       systemMeasureRanges.push({
         first: Math.min(...measures),
         last: Math.max(...measures),
       });
     }
   }
-  console.log(`✅ 줄(system) ${systemYPositions.length}개 감지`);
+  console.log(`✅ 줄(system) ${systemMeasureRanges.length}개 감지`);
 }
 
-// 🆕 컨테이너 높이를 2줄로 고정 + transition 셋업
-function applyTwoLineView() {
-  if (systemYPositions.length < 2) return;          // 1줄짜리 곡은 스킵
-  const oneLineHeight = systemYPositions[1] - systemYPositions[0];
-  const container = document.getElementById('osmd-container');
-  container.style.height = `${oneLineHeight * 2}px`;
-  container.style.overflow = 'hidden';
 
-  const svg = container.querySelector('svg');
-  if (svg) svg.style.transition = 'transform 0.4s ease';
-}
 
-// 🆕 measure 번호 → 어느 줄에 속하는지
+// measure 번호 → 어느 줄에 속하는지
 function getSystemIndexForMeasure(measureNumber) {
   if (measureNumber == null) return -1;
   for (let i = 0; i < systemMeasureRanges.length; i++) {
@@ -167,23 +164,48 @@ function getSystemIndexForMeasure(measureNumber) {
   return -1;
 }
 
-// N번째 줄을 화면 최상단에 오게 SVG 이동
-function scrollToSystem(systemIndex) {
-  if (systemYPositions.length === 0) return;
-  // 마지막 줄에 도달하면 더 안 넘김 (빈 공간 방지)
-  const maxIndex = Math.max(0, systemYPositions.length - 2);
-  const idx = Math.max(0, Math.min(systemIndex, maxIndex));
-  const targetY = systemYPositions[idx];
 
-  const svg = document.querySelector('#osmd-container svg');
-  if (svg) svg.style.transform = `translateY(${-targetY}px)`;
+// N번째 줄을 화면 최상단에 오게 .score-area 스크롤
+function scrollToSystem(systemIndex) {
+  if (systemIndex < 0 || systemIndex >= systemMeasureRanges.length) return;
+
+  const measureRange = systemMeasureRanges[systemIndex];
+  const notes = graphicalNotesByMeasure.get(measureRange.first);
+  if (!notes || notes.length === 0) {
+    console.warn(`! scrollToSystem(${systemIndex}): measure ${measureRange.first}에 노트 없음`);
+    return;
+  }
+
+  // 이 시스템 첫 음표의 DOM 요소
+  const noteEl = notes[0].getSVGGElement?.();
+  if (!noteEl) {
+    console.warn(`! scrollToSystem(${systemIndex}): SVG 요소 못 찾음`);
+    return;
+  }
+
+  // .score-area 안에서 이 음표가 상단에 오도록 스크롤
+  const scrollArea = document.querySelector('.score-area');
+  if (!scrollArea) return;
+
+  const noteRect = noteEl.getBoundingClientRect();
+  const areaRect = scrollArea.getBoundingClientRect();
+  const offsetWithinArea = noteRect.top - areaRect.top + scrollArea.scrollTop;
+  const targetTop = Math.max(0, offsetWithinArea - 60);  // 30px 위쪽 여백 (다이내믹 마크 등 보이게)
+
+  scrollArea.scrollTo({ top: targetTop, behavior: 'smooth' });
+  console.log(`✅ scrollTo top=${targetTop.toFixed(0)} (system ${systemIndex}, measure ${measureRange.first})`);
+
 }
 
 // 커서 위치 보고 줄 바뀌었으면 스크롤
 function updateAutoScroll() {
   const measureNum = getCurrentCursorMeasureNumber();
   const newSystem = getSystemIndexForMeasure(measureNum);
+
+  console.log(`커서 → measure ${measureNum} / system ${newSystem} (현재 ${currentSystemIndex})`);
   if (newSystem >= 0 && newSystem !== currentSystemIndex) {
+    console.log(`스크롤 발동: system ${currentSystemIndex} → ${newSystem}`);
+
     currentSystemIndex = newSystem;
     scrollToSystem(currentSystemIndex);
   }
@@ -229,11 +251,13 @@ async function loadScore(source) {
 
   updateSongInfo();
 
-  // 🆕 자동 스크롤 셋업
+
+  // 자동 스크롤 셋업
   captureSystemLayout();
-  applyTwoLineView();
   currentSystemIndex = 0;
-  scrollToSystem(0);
+  const scrollArea = document.querySelector('.score-area');
+  if (scrollArea) scrollArea.scrollTop = 0;
+
 
   console.log(`✅ 로딩 완료. 음표 ${graphicalNotes.length}개, 마디 ${graphicalNotesByMeasure.size}개`);
 }
@@ -315,11 +339,47 @@ window.scoreView = {
   errorLog = [];      // 🆕 추가
   updateStatsUI();
   updateProgressUI();
-  currentSystemIndex = 0;                // 🆕
-  scrollToSystem(0);  
-
-}
+  currentSystemIndex = 0;
+  const scrollArea = document.querySelector('.score-area');
+  if (scrollArea) scrollArea.scrollTop = 0;
+  }
 };
+
+
+// === 🛠 데모 버튼 핸들러 (배포 전 제거) ===
+document.getElementById("btn-next")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '정확');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-fast")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '빠름');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-slow")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'correct', '느림');
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-wrong")?.addEventListener("click", () => {
+  window.scoreView.highlightNote(null, 'wrong', null);
+  window.scoreView.advanceCursor(null);
+});
+document.getElementById("btn-prev")?.addEventListener("click", () => {
+  osmd.cursor.previous();
+  currentNoteIndex = Math.max(0, currentNoteIndex - 1);
+  updateProgressUI();
+  updateAutoScroll();
+});
+document.getElementById("btn-reset")?.addEventListener("click", () => {
+  window.scoreView.reset();
+});
+// 자동 진행 — 100ms 간격으로 10번 (스크롤 transition 보기 좋게)
+document.getElementById("btn-next-10")?.addEventListener("click", async () => {
+  for (let i = 0; i < 10; i++) {
+    window.scoreView.highlightNote(null, 'correct', '정확');
+    window.scoreView.advanceCursor(null);
+    await new Promise(r => setTimeout(r, 100));
+  }
+});
 
 
 document.getElementById("btn-show-result")?.addEventListener("click", () => {
@@ -456,6 +516,15 @@ function setupComparator(scoreJson) {
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
+
+// 디버그용
+window._debug = {
+  get systemMeasureRanges() { return systemMeasureRanges; },
+  get currentSystemIndex() { return currentSystemIndex; },
+  get currentNoteIndex() { return currentNoteIndex; },
+};
+
+window.osmd = osmd;     // 콘솔에서 osmd 직접 만지게
 
 bootstrap();
 
