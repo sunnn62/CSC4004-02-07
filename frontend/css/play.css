@@ -169,6 +169,13 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; align-items: center; justify-content: center;
 }
 .icon-btn:hover { background: var(--bg-active); }
+.icon-btn.active {
+  background: var(--text-primary);
+  color: #FFFFFF;
+}
+.icon-btn.active:hover {
+  background: #333;
+}
 
 .primary-btn {
   background: var(--text-primary);

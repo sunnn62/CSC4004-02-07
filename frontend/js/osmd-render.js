@@ -19,6 +19,7 @@ let errorLog = [];   // 오답 발생한 음표 기록 [{measureNumber, hand, ex
 // 통계 + 진행률 추적
 let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
+let stopwatchHasStarted = false;   // 첫 음 평가 시 true → 그때 한 번만 stopwatch.start()
 
 // 자동 스크롤 상태
 let systemMeasureRanges = [];        // 각 줄에 속한 measure 번호 [{first, last}]
@@ -281,6 +282,11 @@ window.scoreView = {
   },
 
   highlightNote(noteId, pitchResult, timingResult) {
+  // 🆕 첫 음 평가 시 스톱워치 시작 (한 번만)
+  if (!stopwatchHasStarted) {
+    stopwatch.start();
+    stopwatchHasStarted = true;
+  }
   const color = pitchResultToColor(pitchResult);
   if (noteId && noteIdMap.has(noteId)) {
     colorGraphicalNote(noteIdMap.get(noteId), color);
@@ -344,6 +350,7 @@ window.scoreView = {
   const scrollArea = document.querySelector('.score-area');
   if (scrollArea) scrollArea.scrollTop = 0;
   metronome.reset();
+  stopwatchHasStarted = false;
   }
 };
 
@@ -410,7 +417,7 @@ function openPauseModal() {
 function closePauseModal() {
   document.getElementById("pause-modal").classList.remove("show");
   service?.resume();
-  stopwatch.start();
+  if (stopwatchHasStarted) stopwatch.start();   // 첫 음 전이면 대기 상태 유지
   metronome.resumeFromModal();
 }
 
@@ -424,7 +431,7 @@ document.getElementById("btn-restart")?.addEventListener("click", () => {
   service?.restart();
   window.scoreView.reset();
   stopwatch.reset();                      
-  closePauseModal();                      // 이 안에서 stopwatch.start() 자동 호출됨
+  closePauseModal();                      
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
@@ -508,7 +515,7 @@ async function bootstrap() {
   setupMetronome();
 
 
-  // 2) 🆕 D 비교 엔진 셋업 (scoreJson 필요)
+  // 2) D 비교 엔진 셋업 (scoreJson 필요)
   let scoreJson = null;
   try {
     if (useBackend) {
@@ -524,15 +531,14 @@ async function bootstrap() {
     setupComparator(scoreJson);
   } else {
     console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능.");
-    stopwatch.start();                    // 🆕 백엔드 없어도 스톱워치는 시작
   }
 }
 
-// 🆕 D 서비스 생성 + 콜백 연결
+// D 서비스 생성 + 콜백 연결
 function setupComparator(scoreJson) {
   const settings = JSON.parse(sessionStorage.getItem('playSettings') || '{}');
 
-  // 🆕 스톱워치 총 길이 세팅 (배속 적용)
+  // 스톱워치 총 길이 세팅 (배속 적용)
   const baseDuration = scoreJson?.metadata?.estimatedDurationSec;
   const speed = settings.speedMultiplier ?? 1.0;
   if (baseDuration) {
@@ -559,7 +565,6 @@ function setupComparator(scoreJson) {
   };
 
   service.start()
-  .then(() => stopwatch.start())          // 🆕 MIDI 연결되면 스톱워치 시작
   .catch(e => console.error("MIDI 연결 실패:", e));
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
