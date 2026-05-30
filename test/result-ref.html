@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<!--
+  ┌──────────────────────────────────────────────────────────────┐
+  │  결과 화면 레퍼런스 (feat/sh → develop-jh 전달용)            │
+  │                                                              │
+  │  추가된 지표                                                  │
+  │  ① 음정 정확도  — 기존과 동일 (correctNotes / totalNotes)    │
+  │  ② 박자 정확도  — '정확'만 맞음, '빠름'·'느림'은 틀린 것    │
+  │                   (timingCorrect / timingTotal)              │
+  │  ③ 연주 시간    — elapsedSec (기존 필드, 화면 표시만 추가)   │
+  │                                                              │
+  │  ── osmd-render.js에 추가해야 할 코드 ──────────────────── │
+  │                                                              │
+  │  1) 상단 상태 변수 추가                                       │
+  │     let timingCorrect = 0;   // '정확' 판정 횟수             │
+  │     let timingTotal   = 0;   // 박자 판정 받은 음 수         │
+  │                              //  (null 면제 음표는 미포함)   │
+  │                                                              │
+  │  2) highlightNote() 안에서 집계                              │
+  │     if (timingResult !== null) {                             │
+  │       timingTotal++;                                         │
+  │       if (timingResult === '정확') timingCorrect++;          │
+  │     }                                                        │
+  │                                                              │
+  │  3) reset() 안에서 초기화                                    │
+  │     timingCorrect = 0;                                       │
+  │     timingTotal   = 0;                                       │
+  │                                                              │
+  │  4) showResultScreen() 의 result 객체에 필드 추가            │
+  │     timingCorrect,   // ← NEW                               │
+  │     timingTotal,     // ← NEW                               │
+  │     (elapsedSec 은 이미 있음 ✅)                             │
+  └──────────────────────────────────────────────────────────────┘
+-->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피아니 - 연습 결과 (레퍼런스)</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <style>
+    /* ── 기본 리셋 ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0f0f1a;
+      color: #e0e0e0;
+      font-family: 'Pretendard', 'Segoe UI', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── 헤더 ── */
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #16213e;
+      border-bottom: 1px solid #1a2a4a;
+    }
+    .close-btn, .share-btn {
+      background: none; border: none; cursor: pointer;
+      color: #aaa; font-size: 1.2rem; padding: 4px 8px;
+    }
+    .close-btn:hover, .share-btn:hover { color: #fff; }
+    .header-title { font-size: 0.95rem; font-weight: 600; color: #e0e0e0; }
+
+    /* ── 메인 레이아웃 ── */
+    .result-body {
+      display: flex;
+      gap: 0;
+      min-height: calc(100vh - 53px);
+    }
+
+    /* ── 좌측 패널 ── */
+    .summary-panel {
+      width: 340px;
+      flex-shrink: 0;
+      padding: 28px 24px;
+      background: #16213e;
+      border-right: 1px solid #1a2a4a;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .song-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.4;
+    }
+
+    /* ── 점수 ── */
+    .big-score {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .score-num {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #61dafb;
+      line-height: 1;
+    }
+    .score-total { font-size: 1.1rem; color: #555; }
+
+    .score-trend {
+      font-size: 0.82rem;
+      color: #888;
+      margin-top: -10px;
+    }
+
+    /* ── 지표 카드 3개 ── */
+    .stat-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .stat-card {
+      background: #0f1e35;
+      border: 1px solid #1a2a4a;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-label {
+      font-size: 0.78rem;
+      color: #888;
+      font-weight: 500;
+    }
+    .stat-value-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+    .stat-value small { font-size: 0.7rem; font-weight: 400; color: #888; margin-left: 2px; }
+
+    /* 게이지 바 */
+    .stat-bar-track {
+      height: 6px;
+      background: #1a2a4a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s ease;
+    }
+
+    /* 색상 테마 */
+    .pitch-card  .stat-value  { color: #61dafb; }
+    .pitch-card  .stat-bar-fill { background: linear-gradient(90deg, #1565c0, #61dafb); }
+    .timing-card .stat-value  { color: #c792ea; }
+    .timing-card .stat-bar-fill { background: linear-gradient(90deg, #6a1b9a, #c792ea); }
+    .time-card   .stat-value  { color: #ffcc02; }
+
+    /* ── 버튼 ── */
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: auto;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #1a2a4a;
+      color: #aaa;
+      font-family: inherit;
+      transition: background .15s;
+    }
+    .action-btn:hover { background: #243560; color: #fff; }
+    .action-btn.primary { background: #0f3460; color: #fff; }
+    .action-btn.primary:hover { background: #1a4a8a; }
+
+    /* ── 우측 패널 ── */
+    .detail-panel {
+      flex: 1;
+      padding: 28px 28px;
+      overflow-y: auto;
+    }
+    .detail-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .detail-header h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #e0e0e0;
+    }
+    .error-count-badge {
+      background: #7a2222;
+      color: #ff9d9d;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+    }
+
+    /* ── 박자 분석 섹션 ── */
+    .timing-breakdown {
+      background: #0f1e35;
+      border: 1px solid #1a2a4a;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+    }
+    .timing-breakdown h4 {
+      font-size: 0.82rem;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .timing-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+    .timing-row .label { width: 40px; color: #aaa; }
+    .timing-bar-track { flex: 1; height: 8px; background: #1a2a4a; border-radius: 4px; overflow: hidden; }
+    .timing-bar-fill  { height: 100%; border-radius: 4px; }
+    .timing-bar-fill.correct { background: #4caf50; }
+    .timing-bar-fill.fast    { background: #ff9d7e; }
+    .timing-bar-fill.slow    { background: #61dafb; }
+    .timing-row .count { width: 30px; text-align: right; color: #666; font-size: 0.78rem; }
+
+    /* ── 오답 리스트 ── */
+    .error-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .error-item {
+      background: #1a0f0f;
+      border: 1px solid #3a1a1a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.83rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .error-measure {
+      background: #7a2222;
+      color: #ffaaaa;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .error-detail { color: #ccc; }
+    .error-empty {
+      color: #4caf50;
+      font-size: 0.88rem;
+      padding: 20px;
+      text-align: center;
+    }
+
+    /* ── 테스트 전용 배너 ── */
+    .ref-notice {
+      background: #2a1a00;
+      border: 1px solid #664400;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.75rem;
+      color: #ffcc80;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="result-screen">
+  <!-- 헤더 -->
+  <header class="result-header">
+    <button class="close-btn" id="btn-close">×</button>
+    <h2 class="header-title">연습 결과</h2>
+    <button class="share-btn">공유</button>
+  </header>
+
+  <main class="result-body">
+    <!-- ── 좌측: 점수 + 지표 ── -->
+    <aside class="summary-panel">
+      <div class="song-name" id="song-name">로딩 중...</div>
+
+      <div class="big-score">
+        <span class="score-num" id="score-num">--</span>
+        <span class="score-total">/100</span>
+      </div>
+      <div class="score-trend" id="score-trend">계산 중...</div>
+
+      <div class="stat-cards">
+
+        <!-- ① 음정 정확도 -->
+        <div class="stat-card pitch-card">
+          <span class="stat-label">음정 정확도</span>
+          <div class="stat-value-row">
+            <span class="stat-value" id="pitch-accuracy">--<small>%</small></span>
+            <span style="font-size:0.78rem;color:#555" id="pitch-count"></span>
+          </div>
+          <div class="stat-bar-track">
+            <div class="stat-bar-fill" id="pitch-bar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- ② 박자 정확도 -->
+        <div class="stat-card timing-card">
+          <span class="stat-label">박자 정확도</span>
+          <div class="stat-value-row">
+            <span class="stat-value" id="timing-accuracy">--<small>%</small></span>
+            <span style="font-size:0.78rem;color:#555" id="timing-count"></span>
+          </div>
+          <div class="stat-bar-track">
+            <div class="stat-bar-fill" id="timing-bar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- ③ 연주 시간 -->
+        <div class="stat-card time-card">
+          <span class="stat-label">연주 시간</span>
+          <div class="stat-value-row">
+            <span class="stat-value" id="elapsed-time">--</span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="action-buttons">
+        <button class="action-btn" id="btn-replay">다시 연습</button>
+        <button class="action-btn primary" id="btn-home">홈으로</button>
+      </div>
+    </aside>
+
+    <!-- ── 우측: 분석 ── -->
+    <section class="detail-panel">
+
+      <div class="ref-notice">
+        🛠 레퍼런스 파일 — sessionStorage 데이터가 없으면 목업 데이터로 표시됩니다.
+      </div>
+
+      <!-- 박자 빠름/느림 분포 -->
+      <div class="timing-breakdown">
+        <h4>박자 분포</h4>
+        <div class="timing-row">
+          <span class="label">정확</span>
+          <div class="timing-bar-track">
+            <div class="timing-bar-fill correct" id="tbar-correct" style="width:0%"></div>
+          </div>
+          <span class="count" id="tcnt-correct">0</span>
+        </div>
+        <div class="timing-row">
+          <span class="label">빠름</span>
+          <div class="timing-bar-track">
+            <div class="timing-bar-fill fast" id="tbar-fast" style="width:0%"></div>
+          </div>
+          <span class="count" id="tcnt-fast">0</span>
+        </div>
+        <div class="timing-row">
+          <span class="label">느림</span>
+          <div class="timing-bar-track">
+            <div class="timing-bar-fill slow" id="tbar-slow" style="width:0%"></div>
+          </div>
+          <span class="count" id="tcnt-slow">0</span>
+        </div>
+      </div>
+
+      <!-- 오답 리스트 -->
+      <header class="detail-header">
+        <h3>틀린 음 분석</h3>
+        <span class="error-count-badge" id="error-count-badge">0곳</span>
+      </header>
+      <ul class="error-list" id="error-list">
+        <li class="error-empty">완벽해요! 틀린 음이 없습니다 🎉</li>
+      </ul>
+
+    </section>
+  </main>
+</div>
+
+<script>
+// ──────────────────────────────────────────────────────────────────
+//  sessionStorage에서 읽어오는 데이터 형식
+//
+//  osmd-render.js의 showResultScreen()에서 저장해야 할 객체:
+//  {
+//    scoreId       : string,
+//    songTitle     : string,
+//    totalNotes    : number,   // playList 전체 음표 수
+//    correctNotes  : number,   // 음정 정확 횟수
+//    wrongNotes    : number,   // 음정 오답 횟수
+//    finishedNotes : number,   // 실제 연주한 음표 수
+//    errorLog      : Array,    // [{measureNumber, hand, expectedMidi}]
+//    elapsedSec    : number,   // 연주 시간(초)  ← 기존에 이미 있음 ✅
+//
+//    ─── 아래 두 필드를 osmd-render.js에 추가해야 함 ─────────────
+//    timingCorrect : number,   // '정확' 판정 횟수
+//    timingFast    : number,   // '빠름' 판정 횟수
+//    timingSlow    : number,   // '느림' 판정 횟수
+//    timingTotal   : number,   // 박자 판정 받은 음표 수 (null 면제 제외)
+//    ──────────────────────────────────────────────────────────────
+//  }
+//
+//  ★ osmd-render.js 수정 방법 (하단 '// [수정 가이드]' 주석 참고)
+// ──────────────────────────────────────────────────────────────────
+
+// ── 목업 데이터 (sessionStorage 없을 때 테스트용) ──────────────
+const MOCK = {
+  scoreId      : 'mock-001',
+  songTitle    : '캐논 변주곡 (테스트)',
+  totalNotes   : 64,
+  correctNotes : 50,
+  wrongNotes   : 14,
+  finishedNotes: 64,
+  errorLog     : [
+    { measureNumber: 3,  hand: '오른손', expectedMidi: 64 },
+    { measureNumber: 7,  hand: '왼손',   expectedMidi: 55 },
+    { measureNumber: 11, hand: '오른손', expectedMidi: 72 },
+  ],
+  elapsedSec   : 154,
+  timingCorrect: 38,
+  timingFast   : 10,
+  timingSlow   : 4,
+  timingTotal  : 52,   // timingCorrect + timingFast + timingSlow
+};
+
+// ── 유틸 ──────────────────────────────────────────────────────
+const NOTE_NAMES_KO = ['도', '도#', '레', '레#', '미', '파', '파#', '솔', '솔#', '라', '라#', '시'];
+function midiToKo(midi) {
+  if (!midi) return '?';
+  return NOTE_NAMES_KO[midi % 12] + Math.floor(midi / 12 - 1);
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function trend(acc) {
+  if (acc >= 95) return '🏆 완벽한 연주입니다!';
+  if (acc >= 85) return '👏 아주 잘했어요!';
+  if (acc >= 70) return '👍 잘 하고 있어요!';
+  if (acc >= 50) return '💪 조금만 더 연습해봐요!';
+  return '🎹 꾸준히 연습하면 늘어요!';
+}
+
+// ── 데이터 로드 ────────────────────────────────────────────────
+const raw  = sessionStorage.getItem('practiceResult');
+const data = raw ? JSON.parse(raw) : MOCK;
+
+// ── 계산 ────────────────────────────────────────────────────
+const pitchAcc  = data.totalNotes
+  ? Math.round(data.correctNotes / data.totalNotes * 100) : 0;
+
+const timingAcc = data.timingTotal
+  ? Math.round(data.timingCorrect / data.timingTotal * 100) : null;
+
+// 종합 점수: 음정 70% + 박자 30% 가중 (박자 데이터 없으면 음정만)
+const score = timingAcc !== null
+  ? Math.round(pitchAcc * 0.7 + timingAcc * 0.3)
+  : pitchAcc;
+
+// ── DOM 업데이트 ────────────────────────────────────────────
+document.getElementById('song-name').textContent = data.songTitle ?? '곡 제목 없음';
+
+// 점수
+document.getElementById('score-num').textContent  = score;
+document.getElementById('score-trend').textContent = trend(score);
+
+// ① 음정 정확도
+document.getElementById('pitch-accuracy').innerHTML =
+  `${pitchAcc}<small>%</small>`;
+document.getElementById('pitch-count').textContent  =
+  `${data.correctNotes} / ${data.totalNotes}`;
+document.getElementById('pitch-bar').style.width = `${pitchAcc}%`;
+
+// ② 박자 정확도
+if (timingAcc !== null) {
+  document.getElementById('timing-accuracy').innerHTML =
+    `${timingAcc}<small>%</small>`;
+  document.getElementById('timing-count').textContent  =
+    `${data.timingCorrect} / ${data.timingTotal}`;
+  document.getElementById('timing-bar').style.width = `${timingAcc}%`;
+} else {
+  document.getElementById('timing-accuracy').innerHTML = `<small style="font-size:0.7rem;color:#555">데이터 없음</small>`;
+}
+
+// 박자 분포 바
+const tTotal = data.timingTotal || 1;
+document.getElementById('tbar-correct').style.width = `${(data.timingCorrect ?? 0) / tTotal * 100}%`;
+document.getElementById('tbar-fast'   ).style.width = `${(data.timingFast    ?? 0) / tTotal * 100}%`;
+document.getElementById('tbar-slow'   ).style.width = `${(data.timingSlow    ?? 0) / tTotal * 100}%`;
+document.getElementById('tcnt-correct').textContent  = data.timingCorrect ?? 0;
+document.getElementById('tcnt-fast'   ).textContent  = data.timingFast    ?? 0;
+document.getElementById('tcnt-slow'   ).textContent  = data.timingSlow    ?? 0;
+
+// ③ 연주 시간
+document.getElementById('elapsed-time').textContent =
+  data.elapsedSec != null ? formatTime(data.elapsedSec) : '--:--';
+
+// 오답 리스트
+const errors = data.errorLog ?? [];
+document.getElementById('error-count-badge').textContent = `${errors.length}곳`;
+const listEl = document.getElementById('error-list');
+if (errors.length > 0) {
+  listEl.innerHTML = '';
+  errors.forEach(e => {
+    const li = document.createElement('li');
+    li.className = 'error-item';
+    li.innerHTML =
+      `<span class="error-measure">${e.measureNumber ?? '?'}마디</span>` +
+      `<span class="error-detail">${e.hand ?? '?'} — 기대음: ${midiToKo(e.expectedMidi)}</span>`;
+    listEl.appendChild(li);
+  });
+}
+
+// ── 버튼 ────────────────────────────────────────────────────
+const scoreId = data.scoreId ?? '';
+document.getElementById('btn-replay').addEventListener('click', () => {
+  location.href = `play.html?scoreId=${scoreId}`;
+});
+document.getElementById('btn-home').addEventListener('click', () => {
+  location.href = 'index.html';
+});
+document.getElementById('btn-close').addEventListener('click', () => {
+  location.href = 'index.html';
+});
+</script>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  [수정 가이드] osmd-render.js 에 추가할 코드
+  ════════════════════════════════════════════════════════════════
+
+  1) 파일 상단 상태 변수 선언부에 추가:
+
+     let timingCorrect = 0;
+     let timingFast    = 0;
+     let timingSlow    = 0;
+     let timingTotal   = 0;
+
+
+  2) highlightNote() 함수 안에서 집계 (pitchResult 처리 바로 아래):
+
+     // 박자 집계 (null = 면제이므로 제외)
+     if (timingResult !== null) {
+       timingTotal++;
+       if      (timingResult === '정확') timingCorrect++;
+       else if (timingResult === '빠름') timingFast++;
+       else if (timingResult === '느림') timingSlow++;
+     }
+
+
+  3) reset() 함수 안에 초기화 추가:
+
+     timingCorrect = 0;
+     timingFast    = 0;
+     timingSlow    = 0;
+     timingTotal   = 0;
+
+
+  4) showResultScreen() 의 result 객체에 필드 추가:
+
+     const result = {
+       scoreId      : params.get('scoreId'),
+       songTitle    : osmd.Sheet?.TitleString || '곡 제목 없음',
+       totalNotes   : graphicalNotes.length,
+       correctNotes : stats.correct,
+       wrongNotes   : stats.wrong,
+       finishedNotes: currentNoteIndex,
+       errorLog     : errorLog,
+       elapsedSec   : stopwatch.elapsedSec,
+       // ── 아래 4개 추가 ──────────────────────────────────
+       timingCorrect,
+       timingFast,
+       timingSlow,
+       timingTotal,
+     };
+
+  ════════════════════════════════════════════════════════════════
+-->
+</body>
+</html>
