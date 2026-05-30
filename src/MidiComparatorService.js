@@ -21,9 +21,11 @@
  *   service.resume();         // 이어서 연주  → 재개 (첫 음 박자 면제)
  *
  *   service.restart();        // 처음부터 다시
- *   service.setSpeed(0.5);    // 반속 연습
- *   service.setSpeed(1.0);    // 원래 속도
- *   service.setSpeed(2.0);    // 2배속
+ *   service.setSpeed(0.5);    // 0.5× 반속
+ *   service.setSpeed(0.75);   // 0.75× 느리게
+ *   service.setSpeed(1.0);    // 1.0× 원래 속도
+ *   service.setSpeed(1.25);   // 1.25× 빠르게
+ *   service.setSpeed(1.5);    // 1.5× 빠른 연습
  *
  *   service.stop();           // 연주 완전 종료
  */
@@ -87,7 +89,7 @@ export class MidiComparatorService {
 
   /**
    * 재생 속도 배율 변경
-   * @param {number} multiplier - 0.5=반속, 1.0=보통, 2.0=2배속
+   * @param {number} multiplier - 0.5 / 0.75 / 1.0 / 1.25 / 1.5
    */
   setSpeed(multiplier) {
     this._comparator.setSpeed(multiplier);

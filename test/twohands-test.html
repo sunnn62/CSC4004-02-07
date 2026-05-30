@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <title>양손 동시 연주 테스트</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
+
+    h2 { color: #aaa; margin-bottom: 14px; font-size: 1rem; }
+
+    /* ── 컨트롤 패널 ── */
+    #panel {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 18px;
+    }
+    button {
+      background: #2a5298; color: #fff; border: none; border-radius: 6px;
+      padding: 7px 16px; font-size: 0.85rem; cursor: pointer; font-family: monospace;
+    }
+    button:hover { background: #3a6bc8; }
+    button:disabled { background: #333; color: #555; cursor: default; }
+    #midi-status {
+      font-size: 0.82rem; padding: 5px 10px; border-radius: 4px;
+      border: 1px solid #444; color: #888;
+    }
+    #midi-status.ok  { border-color: #4caf50; color: #4caf50; }
+    #midi-status.err { border-color: #ef5350; color: #ef5350; }
+
+    /* ── 악보 그리드 ── */
+    #score-grid {
+      display: grid;
+      grid-template-columns: 80px repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .grid-label {
+      display: flex; align-items: center; justify-content: flex-end;
+      font-size: 0.78rem; color: #666; padding-right: 8px;
+    }
+    .beat-header {
+      text-align: center; font-size: 0.75rem; color: #555;
+      padding-bottom: 4px; border-bottom: 1px solid #222;
+    }
+
+    /* 음표 셀 */
+    .note-cell {
+      border: 1px solid #2a2a2a; border-radius: 6px;
+      padding: 8px 6px; text-align: center; min-height: 52px;
+      display: flex; flex-direction: column; gap: 4px;
+      transition: border-color .2s, background .2s;
+    }
+    .note-cell .expected { font-size: 0.82rem; color: #888; }
+    .note-cell .result   { font-size: 0.9rem;  font-weight: bold; }
+
+    /* 상태별 색상 */
+    .note-cell.current  { border-color: #61dafb; background: #0d2a33; }
+    .note-cell.correct  { border-color: #4caf50; background: #0d2218; }
+    .note-cell.correct .result { color: #4caf50; }
+    .note-cell.wrong    { border-color: #ef5350; background: #2a0d0d; }
+    .note-cell.wrong .result   { color: #ef5350; }
+
+    /* ── 현재 상태 패널 ── */
+    #live-panel {
+      display: flex; gap: 20px; flex-wrap: wrap;
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 18px; font-size: 0.85rem;
+    }
+    #live-panel .lbl { color: #555; }
+    #live-panel .val { color: #fff; font-weight: bold; margin-left: 6px; }
+    #live-input  .val { color: #61dafb; }
+    #live-timing .val { color: #ff9d7e; }
+
+    /* ── 로그 ── */
+    #log { line-height: 1.8; font-size: 0.82rem; max-height: 300px; overflow-y: auto; }
+    .li { color: #61dafb; }
+    .lc { color: #4caf50; }
+    .lw { color: #ef5350; }
+    .lt { color: #ff9d7e; }
+    .ls { color: #2a2a2a; }
+
+    /* ── 배속 버튼 ── */
+    #speed-group { display: flex; gap: 5px; align-items: center; }
+    #speed-group label { font-size: 0.8rem; color: #888; }
+    .spd { background: #333; color: #aaa; padding: 5px 10px; font-size: 0.8rem; }
+    .spd.active { background: #2a5298; color: #fff; }
+
+    /* ── 완료 배너 ── */
+    #finish-banner {
+      display: none; text-align: center;
+      font-size: 1.4rem; padding: 20px;
+      background: #0d2218; border: 1px solid #4caf50; border-radius: 8px;
+      margin-bottom: 18px; color: #4caf50;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🎹 양손 동시 연주 테스트 — beat group 처리 확인</h2>
+
+<div id="panel">
+  <button id="btn-connect">🎹 MIDI 연결</button>
+  <button id="btn-restart" disabled>🔄 처음부터</button>
+  <button id="btn-clear">🗑 로그 지우기</button>
+  <div id="midi-status">장치 없음</div>
+  <div id="speed-group">
+    <label>배속:</label>
+    <button class="spd" data-v="0.5">0.5×</button>
+    <button class="spd" data-v="0.75">0.75×</button>
+    <button class="spd active" data-v="1.0">1.0×</button>
+    <button class="spd" data-v="1.25">1.25×</button>
+    <button class="spd" data-v="1.5">1.5×</button>
+  </div>
+</div>
+
+<div id="finish-banner"></div>
+
+<!-- 악보 그리드 -->
+<div id="score-grid">
+  <!-- 헤더 행 -->
+  <div class="grid-label"></div>
+  <div class="beat-header">박자 1</div>
+  <div class="beat-header">박자 2</div>
+  <div class="beat-header">박자 3</div>
+  <div class="beat-header">박자 4</div>
+
+  <!-- 오른손 행 -->
+  <div class="grid-label">오른손 🖐</div>
+  <div class="note-cell current" id="cell-r0"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-r1"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-r2"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-r3"><span class="expected"></span><span class="result"></span></div>
+
+  <!-- 왼손 행 -->
+  <div class="grid-label">왼손 🤚</div>
+  <div class="note-cell current" id="cell-l0"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-l1"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-l2"><span class="expected"></span><span class="result"></span></div>
+  <div class="note-cell"         id="cell-l3"><span class="expected"></span><span class="result"></span></div>
+</div>
+
+<!-- 실시간 상태 -->
+<div id="live-panel">
+  <div id="live-input"><span class="lbl">현재 입력:</span><span class="val" id="live-notes">—</span></div>
+  <div id="live-cursor"><span class="lbl">cursor:</span><span class="val" id="live-cur">0</span></div>
+  <div id="live-timing"><span class="lbl">마지막 박자:</span><span class="val" id="live-time">—</span></div>
+  <div><span class="lbl">정확:</span><span class="val" id="cnt-ok" style="color:#4caf50">0</span>
+       <span class="lbl" style="margin-left:12px">오답:</span><span class="val" id="cnt-ng" style="color:#ef5350">0</span></div>
+</div>
+
+<div id="log"></div>
+
+<script type="module">
+import { MidiComparatorService } from '../src/MidiComparatorService.js';
+
+// ══════════════════════════════════════════════
+//  테스트 악보
+//  BPM 60 → 1박 = 1000ms
+//  각 박자마다 오른손·왼손이 동시에 있음
+//
+//  박자1: R=C4(60)  L=C3(48)
+//  박자2: R=E4(64)  L=G3(55)
+//  박자3: R=G4(67)  L=E3(52)
+//  박자4: R=E4(64)  L=G3(55)
+// ══════════════════════════════════════════════
+const SCORE = {
+  metadata: { title: '양손 테스트', tempo: 60, timeSignature: '4/4', keySignature: 'C major' },
+  measures: [{
+    number: 1, repeatStart: false, repeatEnd: false,
+    tempos: [{ bpm: 60, text: null, startBeat: 0, absoluteStartBeat: 0 }],
+    dynamics: [], pedals: [],
+    notes: [
+      // beat 0 — 오른손·왼손 동시
+      { id:'r0', pitches:[60], duration:1, startBeat:0, absoluteStartBeat:0, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      { id:'l0', pitches:[48], duration:1, startBeat:0, absoluteStartBeat:0, hand:'left',  isRest:false, tie:null, isGrace:false, articulations:[] },
+      // beat 1
+      { id:'r1', pitches:[64], duration:1, startBeat:1, absoluteStartBeat:1, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      { id:'l1', pitches:[55], duration:1, startBeat:1, absoluteStartBeat:1, hand:'left',  isRest:false, tie:null, isGrace:false, articulations:[] },
+      // beat 2
+      { id:'r2', pitches:[67], duration:1, startBeat:2, absoluteStartBeat:2, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      { id:'l2', pitches:[52], duration:1, startBeat:2, absoluteStartBeat:2, hand:'left',  isRest:false, tie:null, isGrace:false, articulations:[] },
+      // beat 3
+      { id:'r3', pitches:[64], duration:1, startBeat:3, absoluteStartBeat:3, hand:'right', isRest:false, tie:null, isGrace:false, articulations:[] },
+      { id:'l3', pitches:[55], duration:1, startBeat:3, absoluteStartBeat:3, hand:'left',  isRest:false, tie:null, isGrace:false, articulations:[] },
+    ]
+  }]
+};
+
+// ── 유틸 ──
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const midi2name  = m => NOTE_NAMES[m % 12] + (Math.floor(m/12) - 1);
+
+// ── 그리드 초기화 ──
+const GRID = {
+  r0: { beat:0, hand:'right' },
+  l0: { beat:0, hand:'left'  },
+  r1: { beat:1, hand:'right' },
+  l1: { beat:1, hand:'left'  },
+  r2: { beat:2, hand:'right' },
+  l2: { beat:2, hand:'left'  },
+  r3: { beat:3, hand:'right' },
+  l3: { beat:3, hand:'left'  },
+};
+
+// 기대 음 표시 & 현재 커서 표시 초기화
+SCORE.measures[0].notes.forEach(n => {
+  const cell = document.getElementById('cell-' + n.id);
+  if (!cell) return;
+  cell.querySelector('.expected').textContent = n.pitches.map(midi2name).join('+');
+});
+// beat 0 cells: current 클래스 이미 있음
+
+// ── 로그 ──
+const logEl = document.getElementById('log');
+function log(cls, msg) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = msg;
+  logEl.appendChild(d);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function sep() { log('ls', '─'.repeat(60)); }
+
+// ── stats ──
+let cntOk = 0, cntNg = 0;
+
+// ── 서비스 ──
+const svc = new MidiComparatorService(SCORE, { toleranceMs: 200 });
+
+// ── 현재 커서 표시 갱신 ──
+function refreshCursor() {
+  // 모든 셀에서 current 제거
+  document.querySelectorAll('.note-cell').forEach(c => c.classList.remove('current'));
+  const cur = svc.currentNote;
+  if (!cur) return;
+  // 같은 beat의 미판정 셀들을 current로
+  const curBeat = cur.absoluteStartBeat;
+  SCORE.measures[0].notes.forEach(n => {
+    if (n.absoluteStartBeat === curBeat) {
+      const cell = document.getElementById('cell-' + n.id);
+      if (cell && !cell.classList.contains('correct') && !cell.classList.contains('wrong')) {
+        cell.classList.add('current');
+      }
+    }
+  });
+  document.getElementById('live-cur').textContent = svc._comparator._cursor;
+}
+
+// ── onResult ──
+svc.onResult = (noteId, pitchResult, timingResult) => {
+  const cell = document.getElementById('cell-' + noteId);
+  if (cell) {
+    cell.classList.remove('current');
+    cell.classList.add(pitchResult === 'correct' ? 'correct' : 'wrong');
+    const sym = pitchResult === 'correct' ? '✓' : '✗';
+    const tim = timingResult ? ` (${timingResult})` : '';
+    cell.querySelector('.result').textContent = sym + tim;
+  }
+
+  if (pitchResult === 'correct') { cntOk++; document.getElementById('cnt-ok').textContent = cntOk; }
+  else                            { cntNg++; document.getElementById('cnt-ng').textContent = cntNg; }
+
+  const hand = SCORE.measures[0].notes.find(n => n.id === noteId)?.hand ?? '?';
+  const pitch_sym = pitchResult === 'correct' ? '✓' : '✗';
+  const timing_str = timingResult ?? '면제';
+  log(pitchResult === 'correct' ? 'lc' : 'lw',
+    `  ${noteId} (${hand}손)  음정:${pitch_sym}${pitchResult}  박자:${timing_str}`);
+
+  document.getElementById('live-time').textContent = timingResult ?? '면제';
+  refreshCursor();
+};
+
+svc.onFinish = () => {
+  sep();
+  const total = cntOk + cntNg;
+  const acc = total ? Math.round(cntOk / total * 100) : 0;
+  const banner = document.getElementById('finish-banner');
+  banner.style.display = 'block';
+  banner.textContent = `🎉 완료!  정확도 ${acc}%  (정확 ${cntOk} / 오답 ${cntNg})`;
+  log('lc', `🎉 onFinish — 정확도 ${acc}%`);
+};
+
+// ── MidiInput raw 이벤트 로그 (서비스 내부 _midi 참조) ──
+const origNoteOn = svc._midi.onNoteOn;  // null at this point, wire after start
+// We'll hook via onNoteOn after connect
+
+// ── 버튼 ──
+document.getElementById('btn-connect').addEventListener('click', async () => {
+  const btn = document.getElementById('btn-connect');
+  btn.disabled = true; btn.textContent = '연결 중…';
+  const statusEl = document.getElementById('midi-status');
+  try {
+    await svc.start();
+
+    // raw NoteOn 로깅 (서비스가 이미 연결한 핸들러를 래핑)
+    const inner = svc._midi._input;
+    const origHandler = inner.onmidimessage;
+    inner.onmidimessage = (ev) => {
+      const [st, note, vel] = ev.data;
+      const type = st & 0xf0;
+      if (type === 0x90 && vel > 0) {
+        document.getElementById('live-notes').textContent = midi2name(note) + ' (MIDI ' + note + ')';
+        log('li', `[NoteOn] ${midi2name(note)} (${note})  vel:${vel}`);
+      }
+      origHandler.call(inner, ev);
+    };
+
+    const inputs = [...(await navigator.requestMIDIAccess()).inputs.values()];
+    const name = inputs[0]?.name ?? '알 수 없는 장치';
+    statusEl.textContent = `✅ ${name}`;
+    statusEl.className = 'ok';
+    btn.textContent = '🎹 재연결'; btn.disabled = false;
+    document.getElementById('btn-restart').disabled = false;
+
+    sep();
+    log('li', `MIDI 연결: ${name}`);
+    log('li', '👉 박자 1부터 오른손+왼손 동시에 치세요.');
+    sep();
+    refreshCursor();
+  } catch (e) {
+    statusEl.textContent = `❌ ${e.message}`; statusEl.className = 'err';
+    btn.textContent = '🎹 MIDI 연결'; btn.disabled = false;
+    log('lw', 'MIDI 연결 실패: ' + e.message);
+  }
+});
+
+document.getElementById('btn-restart').addEventListener('click', () => {
+  svc.restart();
+  cntOk = 0; cntNg = 0;
+  document.getElementById('cnt-ok').textContent = '0';
+  document.getElementById('cnt-ng').textContent = '0';
+  document.getElementById('live-notes').textContent = '—';
+  document.getElementById('live-time').textContent  = '—';
+  document.getElementById('finish-banner').style.display = 'none';
+
+  // 셀 리셋
+  document.querySelectorAll('.note-cell').forEach(c => {
+    c.classList.remove('correct','wrong','current');
+    c.querySelector('.result').textContent = '';
+  });
+  refreshCursor();
+  sep();
+  log('li', '🔄 처음부터');
+  sep();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => { logEl.innerHTML = ''; });
+
+// 배속 버튼
+document.querySelectorAll('.spd').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const v = parseFloat(btn.dataset.v);
+    svc.setSpeed(v);
+    document.querySelectorAll('.spd').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    log('lt', `⚡ 배속 → ${v}×  유효 BPM: ${SCORE.metadata.tempo * v}  1박 기대: ${(60000 / (SCORE.metadata.tempo * v)).toFixed(0)}ms`);
+  });
+});
+
+// 초기 기대 음 로그
+sep();
+log('li', '▶ playList (쉼표·tie:stop 제외 후 실제 타건 대상)');
+svc._comparator._playList.forEach((n, i) => {
+  log('li', `  [${i}] ${n.id}  hand:${n.hand}  pitches:[${n.pitches.map(midi2name).join('+')}]  beat:${n.absoluteStartBeat}`);
+});
+sep();
+log('li', '🎹 [MIDI 연결] 버튼을 누르고 피아노를 연결하세요.');
+sep();
+</script>
+</body>
+</html>
