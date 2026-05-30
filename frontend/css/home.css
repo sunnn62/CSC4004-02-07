@@ -42,6 +42,25 @@ body {
 .home-header {
   margin-bottom: 24px;
 }
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-icon-btn {
+  background: var(--bg-card);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+.header-icon-btn:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
 .date {
   font-size: 13px;
   color: var(--text-secondary);

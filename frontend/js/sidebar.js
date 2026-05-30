@@ -9,8 +9,6 @@
 const NAV_ITEMS = [
   { id: 'home',     icon: '⌂',  label: '홈',     href: 'home.html' },
   { id: 'practice', icon: '▶',  label: '연습',   href: 'index.html' },
-  { id: 'records',  icon: '📊', label: '기록',   href: '#' },
-  { id: 'profile',  icon: '👤', label: '프로필', href: '#' },
 ];
 
 // MIDI 상태 (나중에 D 통합 시 동적으로 업데이트할 수 있게 분리)
