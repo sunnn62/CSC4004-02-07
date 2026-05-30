@@ -295,6 +295,76 @@
       text-align: center;
     }
 
+    /* ── AI 분석 카드 ── */
+    .ai-card {
+      background: #0f1e35;
+      border: 1px solid #1a3060;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-top: 20px;
+    }
+    .ai-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .ai-card-header h4 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #61dafb;
+    }
+    .ai-badge {
+      font-size: 0.68rem;
+      background: #0d2a40;
+      color: #61dafb;
+      border: 1px solid #1a4a6a;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    /* 로딩 */
+    .ai-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #555;
+      font-size: 0.82rem;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #1a3060;
+      border-top-color: #61dafb;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* 결과 텍스트 */
+    .ai-text {
+      font-size: 0.85rem;
+      color: #ccc;
+      line-height: 1.75;
+      white-space: pre-wrap;
+    }
+    /* 오류 */
+    .ai-error {
+      font-size: 0.82rem;
+      color: #888;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-retry {
+      font-size: 0.75rem;
+      background: #1a2a4a;
+      color: #aaa;
+      border: 1px solid #2a3a5a;
+      border-radius: 6px;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+    .btn-retry:hover { background: #243560; color: #fff; }
+
     /* ── 테스트 전용 배너 ── */
     .ref-notice {
       background: #2a1a00;
@@ -411,6 +481,20 @@
       <ul class="error-list" id="error-list">
         <li class="error-empty">완벽해요! 틀린 음이 없습니다 🎉</li>
       </ul>
+
+      <!-- AI 분석 카드 -->
+      <div class="ai-card">
+        <div class="ai-card-header">
+          <h4>🤖 AI 연주 분석</h4>
+          <span class="ai-badge">Claude</span>
+        </div>
+        <div id="ai-content">
+          <div class="ai-loading">
+            <div class="spinner"></div>
+            <span>분석 중...</span>
+          </div>
+        </div>
+      </div>
 
     </section>
   </main>
@@ -594,6 +678,105 @@ document.getElementById('btn-home').addEventListener('click', () => {
 document.getElementById('btn-close').addEventListener('click', () => {
   location.href = 'index.html';
 });
+
+// ── AI 분석 ─────────────────────────────────────────────────
+//
+//  백엔드 API 스펙 (backend/main.py에 구현 요청)
+//  ─────────────────────────────────────────────
+//  POST http://localhost:8001/api/analyze
+//  Content-Type: application/json
+//
+//  Request body:
+//  {
+//    "songTitle"     : string,   // 곡 제목
+//    "pitchAccuracy" : number,   // 음정 정확도 (0~100)
+//    "timingAccuracy": number,   // 박자 정확도 (0~100), null 가능
+//    "timingFast"    : number,   // 빠름 횟수
+//    "timingSlow"    : number,   // 느림 횟수
+//    "errorMeasures" : [         // 마디별 오답 요약
+//      { "measure": 3, "right": 3, "left": 1 }, ...
+//    ],
+//    "elapsedSec"    : number    // 연주 시간(초)
+//  }
+//
+//  Response:
+//  { "analysis": "분석 텍스트..." }
+//
+//  백엔드 Claude 프롬프트 예시:
+//  ─────────────────────────────
+//  system: "당신은 피아노 교육 전문가입니다."
+//  user:
+//    곡: {songTitle}
+//    음정 정확도: {pitchAccuracy}%
+//    박자 정확도: {timingAccuracy}%
+//    박자 경향: 빠름 {timingFast}회, 느림 {timingSlow}회
+//    자주 틀린 마디: {errorMeasures}
+//    연주 시간: {elapsedMin}분 {elapsedSec}초
+//
+//    위 결과를 바탕으로 친근하고 격려적인 한국어로 분석해주세요.
+//    형식: 전체 평가 → 개선할 점 → 연습 팁 (총 4~5문장 이내)
+//  ─────────────────────────────────────────────
+
+const API_BASE = 'http://localhost:8001';
+
+// errorLog를 마디별 요약 배열로 변환 (백엔드 전송용)
+function buildErrorMeasures(errorLog) {
+  const map = new Map();
+  (errorLog ?? []).forEach(e => {
+    const m = e.measureNumber ?? 0;
+    if (!map.has(m)) map.set(m, { measure: m, right: 0, left: 0 });
+    const g = map.get(m);
+    if (e.hand === '오른손') g.right++; else g.left++;
+  });
+  return [...map.values()].sort((a, b) => a.measure - b.measure);
+}
+
+async function loadAnalysis() {
+  const contentEl = document.getElementById('ai-content');
+
+  // 로딩 상태
+  contentEl.innerHTML = `
+    <div class="ai-loading">
+      <div class="spinner"></div>
+      <span>AI가 연주를 분석하고 있어요...</span>
+    </div>`;
+
+  try {
+    const body = {
+      songTitle     : data.songTitle ?? '알 수 없는 곡',
+      pitchAccuracy : pitchAcc,
+      timingAccuracy: timingAcc,          // null이면 백엔드에서 무시
+      timingFast    : data.timingFast  ?? 0,
+      timingSlow    : data.timingSlow  ?? 0,
+      errorMeasures : buildErrorMeasures(data.errorLog),
+      elapsedSec    : data.elapsedSec  ?? 0,
+    };
+
+    const res = await fetch(`${API_BASE}/api/analyze`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
+
+    const json = await res.json();
+    const text = json.analysis ?? '분석 결과를 받지 못했어요.';
+
+    contentEl.innerHTML = `<p class="ai-text">${text}</p>`;
+
+  } catch (err) {
+    contentEl.innerHTML = `
+      <div class="ai-error">
+        <span>분석을 불러오지 못했어요. (${err.message})</span>
+        <button class="btn-retry" id="btn-retry">다시 시도</button>
+      </div>`;
+    document.getElementById('btn-retry')?.addEventListener('click', loadAnalysis);
+  }
+}
+
+// 페이지 로드 시 바로 분석 요청
+loadAnalysis();
 </script>
 
 <!--
