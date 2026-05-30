@@ -2,6 +2,7 @@
   --bg-main: #F5F1E8;
   --bg-card: #FFFFFF;
   --bg-active: #E5DFD0;
+  --bg-hover: rgba(0,0,0,0.04);
   --text-primary: #1A1A1A;
   --text-secondary: #666666;
   --text-tertiary: #999999;
@@ -9,6 +10,7 @@
   --radius-lg: 20px;
   --radius-md: 12px;
   --radius-sm: 8px;
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,10 +24,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
+.layout { display: flex; min-height: 100vh; }
 
 .main {
   flex: 1;
@@ -44,59 +43,54 @@ body {
 .back-btn {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 26px;
   cursor: pointer;
   color: var(--text-primary);
-  padding: 0 8px;
+  padding: 0 4px;
   line-height: 1;
 }
-.page-title {
-  font-size: 18px;
-  font-weight: 700;
-}
+.page-title { font-size: 18px; font-weight: 700; }
 
-/* ───── 프로필 카드 ───── */
-.profile-card {
+/* ───── 프로필 히어로 ───── */
+.profile-hero {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
-  padding: 24px 28px;
+  padding: 28px;
   display: flex;
   align-items: center;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
 }
 
 .avatar {
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: var(--bg-active);
+  background: linear-gradient(135deg, #3B5BDB, #7048E8);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #fff;
   flex-shrink: 0;
+  letter-spacing: -1px;
 }
 
-.profile-info {
-  flex: 1;
-}
+.profile-info { flex: 1; min-width: 0; }
 
 .nickname-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 4px;
 }
-
 .nickname {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.4px;
 }
-
 .edit-btn {
   background: var(--bg-active);
   border: none;
@@ -106,8 +100,9 @@ body {
   color: var(--text-secondary);
   cursor: pointer;
   font-family: inherit;
+  transition: background 0.15s;
 }
-.edit-btn:hover { background: #d5cfc0; }
+.edit-btn:hover { background: #d0c9b8; }
 
 .nickname-edit {
   display: flex;
@@ -124,10 +119,11 @@ body {
   background: var(--bg-main);
   outline: none;
   width: 160px;
+  transition: border-color 0.15s;
 }
-.nickname-input:focus { border-color: var(--text-primary); }
+.nickname-input:focus { border-color: #3B5BDB; }
 .save-btn {
-  background: var(--text-primary);
+  background: #3B5BDB;
   color: #fff;
   border: none;
   border-radius: var(--radius-sm);
@@ -135,42 +131,104 @@ body {
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
+.save-btn:hover { opacity: 0.88; }
 
 .join-date {
   font-size: 13px;
   color: var(--text-tertiary);
 }
 
+/* ───── 레벨 배지 ───── */
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #3B5BDB, #7048E8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 6px;
+}
+
 /* ───── 통계 그리드 ───── */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .stat-card {
   background: var(--bg-card);
   border-radius: var(--radius-md);
-  padding: 20px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s;
 }
+.stat-card:hover { transform: translateY(-2px); }
 
-.stat-icon {
-  font-size: 22px;
-  margin-bottom: 4px;
+.stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.stat-icon { font-size: 20px; }
+.stat-badge {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-main);
+  padding: 2px 8px;
+  border-radius: 999px;
 }
 
 .stat-value {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.5px;
   color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.stat-label {
-  font-size: 13px;
-  color: var(--text-secondary);
+/* ───── 연속 연습 스트릭 ───── */
+.streak-card {
+  background: #1A1A1A;
+  color: #fff;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+  margin-bottom: 16px;
+}
+.streak-left { display: flex; align-items: center; gap: 14px; }
+.streak-flame { font-size: 32px; }
+.streak-info {}
+.streak-count {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.streak-label { font-size: 13px; color: rgba(255,255,255,0.6); }
+.streak-best {
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+}
+.streak-best strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 2px;
 }
