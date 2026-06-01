@@ -34,17 +34,36 @@
         <div class="score-trend" id="score-trend">계산 중...</div>
 
         <div class="stat-cards">
+          <!-- ① 음정 정확도 -->
           <div class="stat-card">
-            <span class="stat-label">음정 정확도</span>
+            <div class="stat-card-top">
+              <span class="stat-label">음정 정확도</span>
+              <span class="stat-sub" id="pitch-count"></span>
+            </div>
             <span class="stat-value" id="accuracy">--<small>%</small></span>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill pitch-fill" id="pitch-bar" style="width:0%"></div>
+            </div>
           </div>
+
+          <!-- ② 박자 정확도 -->
           <div class="stat-card">
-            <span class="stat-label">완주율</span>
-            <span class="stat-value" id="completion">--<small>%</small></span>
+            <div class="stat-card-top">
+              <span class="stat-label">박자 정확도</span>
+              <span class="stat-sub" id="timing-count"></span>
+            </div>
+            <span class="stat-value" id="timing-accuracy">--<small>%</small></span>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill timing-fill" id="timing-bar" style="width:0%"></div>
+            </div>
           </div>
+
+          <!-- ③ 연주 시간 -->
           <div class="stat-card">
-            <span class="stat-label">틀린 음</span>
-            <span class="stat-value" id="wrong-count">--<small>개</small></span>
+            <div class="stat-card-top">
+              <span class="stat-label">연주 시간</span>
+            </div>
+            <span class="stat-value time-value" id="elapsed-time">--:--</span>
           </div>
         </div>
 
@@ -54,16 +73,59 @@
         </div>
       </aside>
 
-      <!-- 우측: 틀린 음 분석 -->
+      <!-- 우측: 분석 -->
       <section class="detail-panel">
+
+        <!-- 박자 분포 -->
+        <div class="timing-breakdown">
+          <h4 class="breakdown-title">박자 분포</h4>
+          <div class="timing-row">
+            <span class="timing-label">정확</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill correct" id="tbar-correct" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-correct">0</span>
+          </div>
+          <div class="timing-row">
+            <span class="timing-label">빠름</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill fast" id="tbar-fast" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-fast">0</span>
+          </div>
+          <div class="timing-row">
+            <span class="timing-label">느림</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill slow" id="tbar-slow" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-slow">0</span>
+          </div>
+        </div>
+
+        <!-- 오답 리스트 -->
         <header class="detail-header">
           <h3>틀린 음 분석</h3>
-          <span class="error-count-badge" id="error-count-badge">0곳</span>
+          <span class="error-count-badge" id="error-count-badge">0마디</span>
         </header>
 
         <ul class="error-list" id="error-list">
           <li class="error-empty">완벽해요! 틀린 음이 없습니다 🎉</li>
         </ul>
+
+        <!-- AI 분석 카드 -->
+        <div class="ai-card">
+          <div class="ai-card-header">
+            <h4>AI 연주 분석</h4>
+            <span class="ai-badge">AI</span>
+          </div>
+          <div id="ai-content">
+            <div class="ai-loading">
+              <div class="spinner"></div>
+              <span>분석 중...</span>
+            </div>
+          </div>
+        </div>
+
       </section>
     </main>
   </div>

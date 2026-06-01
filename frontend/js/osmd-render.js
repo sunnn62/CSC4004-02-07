@@ -21,6 +21,7 @@ let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
 let timerStarted = false;   // 첫 음 입력 전까지 타이머 대기 (팀원 구현)
 
+
 // 첫 음 입력 시 딱 한 번만 타이머 시작
 function startTimerOnce() {
   if (timerStarted) return;
@@ -393,7 +394,7 @@ document.getElementById("btn-restart")?.addEventListener("click", () => {
   window.scoreView.reset();   // timerStarted=false + metronome.reset() 포함
   stopwatch.reset();
   closePauseModal(false);     // 모달 닫기 + resume, 타이머는 첫 음까지 대기
-});
+
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
   service?.stop();
@@ -482,6 +483,7 @@ async function bootstrap() {
   } else {
     console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능.");
     // 타이머는 첫 highlightNote 시점에 startTimerOnce()가 자동 시작
+
   }
 }
 
@@ -516,6 +518,7 @@ function setupComparator(scoreJson) {
   service.start()
     .then(() => console.log("✅ MIDI 연결 완료 — 첫 음 입력 시 타이머 시작"))
     .catch(e => console.error("MIDI 연결 실패:", e));
+
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
