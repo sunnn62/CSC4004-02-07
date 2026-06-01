@@ -18,6 +18,14 @@ let errorLog = [];   // 오답 발생한 음표 기록 [{measureNumber, hand, ex
 // 통계 + 진행률 추적
 let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
+let timerStarted = false;  // 첫 음 입력 전까지 타이머 대기
+
+// 첫 음 입력 시 딱 한 번만 타이머 시작
+function startTimerOnce() {
+  if (timerStarted) return;
+  timerStarted = true;
+  stopwatch.start();
+}
 
 // 자동 스크롤 상태
 let systemMeasureRanges = [];        // 각 줄에 속한 measure 번호 [{first, last}]
@@ -280,6 +288,7 @@ window.scoreView = {
   },
 
   highlightNote(noteId, pitchResult, timingResult) {
+  startTimerOnce();   // 첫 음 입력 시 타이머 시작
   const color = pitchResultToColor(pitchResult);
   if (noteId && noteIdMap.has(noteId)) {
     colorGraphicalNote(noteIdMap.get(noteId), color);
@@ -336,7 +345,8 @@ window.scoreView = {
   osmd.cursor.reset();
   stats = { correct: 0, wrong: 0 };
   currentNoteIndex = 0;
-  errorLog = [];      // 🆕 추가
+  errorLog = [];
+  timerStarted = false;  // 다음 첫 음에서 타이머 재시작하도록 초기화
   updateStatsUI();
   updateProgressUI();
   currentSystemIndex = 0;
@@ -404,10 +414,11 @@ function openPauseModal() {
   stopwatch.pause();
 }
 
-function closePauseModal() {
+// startTimer: false면 타이머를 켜지 않음 (처음부터 후 첫 음 대기 시 사용)
+function closePauseModal(startTimer = true) {
   document.getElementById("pause-modal").classList.remove("show");
   service?.resume();
-  stopwatch.start();                      // 추가 (내부에서 이어서 처리됨)
+  if (startTimer) stopwatch.start();   // 일시정지 재개 시에만 타이머 재시작
 }
 
 // 일시정지 버튼 → 모달 열기 (이 줄이 빠져있었음!)
@@ -418,9 +429,9 @@ document.getElementById("btn-resume")?.addEventListener("click", closePauseModal
 
 document.getElementById("btn-restart")?.addEventListener("click", () => {
   service?.restart();
-  window.scoreView.reset();
-  stopwatch.reset();                      
-  closePauseModal();                      // 이 안에서 stopwatch.start() 자동 호출됨
+  window.scoreView.reset();   // timerStarted = false 포함
+  stopwatch.reset();
+  closePauseModal(false);     // 모달 닫기 + resume만, 타이머는 첫 음 입력까지 대기
 });
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
@@ -477,7 +488,7 @@ async function bootstrap() {
     setupComparator(scoreJson);
   } else {
     console.warn("⚠️ scoreJson 없음 → D 미연동. 데모 버튼으로 시각 테스트만 가능.");
-    stopwatch.start();                    // 🆕 백엔드 없어도 스톱워치는 시작
+    // 타이머는 데모 버튼 첫 클릭 시 startTimerOnce()가 자동 시작함
   }
 }
 
@@ -511,7 +522,7 @@ function setupComparator(scoreJson) {
   };
 
   service.start()
-  .then(() => stopwatch.start())          // 🆕 MIDI 연결되면 스톱워치 시작
+  .then(() => console.log("✅ MIDI 연결 완료 — 첫 음 입력 시 타이머 시작"))
   .catch(e => console.error("MIDI 연결 실패:", e));
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
