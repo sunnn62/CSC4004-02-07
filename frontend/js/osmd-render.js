@@ -20,6 +20,12 @@ let stats = { correct: 0, wrong: 0 };
 let currentNoteIndex = 0;
 let timerStarted = false;  // 첫 음 입력 전까지 타이머 대기
 
+// 박자 판정 집계 (result 페이지용)
+let timingCorrect = 0;
+let timingFast    = 0;
+let timingSlow    = 0;
+let timingTotal   = 0;
+
 // 첫 음 입력 시 딱 한 번만 타이머 시작
 function startTimerOnce() {
   if (timerStarted) return;
@@ -311,6 +317,14 @@ window.scoreView = {
       errorLog.push({ measureNumber, hand, expectedMidi });
     }
   }
+  // 박자 집계 (null = 첫 음 면제이므로 제외)
+  if (timingResult !== null) {
+    timingTotal++;
+    if      (timingResult === '정확') timingCorrect++;
+    else if (timingResult === '빠름') timingFast++;
+    else if (timingResult === '느림') timingSlow++;
+  }
+
   updateStatsUI();
   showJudgmentBanner(pitchResult, timingResult);
 },
@@ -335,6 +349,10 @@ window.scoreView = {
     finishedNotes: currentNoteIndex,
     errorLog: errorLog,
     elapsedSec: stopwatch.elapsedSec,
+    timingCorrect,
+    timingFast,
+    timingSlow,
+    timingTotal,
   };
   sessionStorage.setItem('practiceResult', JSON.stringify(result));
   window.location.href = 'result.html';
@@ -347,6 +365,10 @@ window.scoreView = {
   currentNoteIndex = 0;
   errorLog = [];
   timerStarted = false;  // 다음 첫 음에서 타이머 재시작하도록 초기화
+  timingCorrect = 0;
+  timingFast    = 0;
+  timingSlow    = 0;
+  timingTotal   = 0;
   updateStatsUI();
   updateProgressUI();
   currentSystemIndex = 0;
