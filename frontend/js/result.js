@@ -186,6 +186,45 @@ async function loadAnalysis() {
   }
 }
 
+// ── 프로필 통계 업데이트 ──────────────────────────────────
+function updateProfileStats() {
+  if (!data || sessionStorage.getItem('practiceResultSaved')) return;
+  sessionStorage.setItem('practiceResultSaved', '1');
+
+  const pitchAcc  = data.totalNotes
+    ? Math.round(data.correctNotes / data.totalNotes * 100) : 0;
+  const timingAcc = data.timingTotal
+    ? Math.round(data.timingCorrect / data.timingTotal * 100) : null;
+  const score = timingAcc !== null
+    ? Math.round(pitchAcc * 0.7 + timingAcc * 0.3)
+    : pitchAcc;
+
+  const STATS_KEY = 'piano_stats';
+  const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+
+  stats.totalMinutes  = Math.round((stats.totalMinutes  ?? 0) + (data.elapsedSec ?? 0) / 60);
+  const prevCount     = stats.completedSongs ?? 0;
+  stats.completedSongs = prevCount + 1;
+  stats.avgAccuracy   = prevCount === 0
+    ? score
+    : Math.round(((stats.avgAccuracy ?? score) * prevCount + score) / stats.completedSongs);
+
+  const today     = new Date().toDateString();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+  if (stats.lastPracticeDate === today) {
+    // 오늘 이미 기록됨
+  } else if (stats.lastPracticeDate === yesterday) {
+    stats.streak = (stats.streak ?? 0) + 1;
+  } else {
+    stats.streak = 1;
+  }
+  stats.lastPracticeDate = today;
+  stats.bestStreak = Math.max(stats.bestStreak ?? 0, stats.streak ?? 0);
+
+  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
 // ── 시작 ─────────────────────────────────────────────────
 render();
+updateProfileStats();
 loadAnalysis();
