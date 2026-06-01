@@ -394,7 +394,7 @@ document.getElementById("btn-restart")?.addEventListener("click", () => {
   window.scoreView.reset();   // timerStarted=false + metronome.reset() 포함
   stopwatch.reset();
   closePauseModal(false);     // 모달 닫기 + resume, 타이머는 첫 음까지 대기
-
+});
 
 document.getElementById("btn-end")?.addEventListener("click", () => {
   service?.stop();
@@ -532,3 +532,4 @@ window._debug = {
 window.osmd = osmd;
 
 bootstrap();
+
