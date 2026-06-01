@@ -6,11 +6,10 @@
   <meta name="theme-color" content="#F5F1E8">
   <title>피아니 - 악보 추가</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/sidebar.css">
   <link rel="stylesheet" href="css/upload.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
-<link rel="stylesheet" href="css/sidebar.css">   <!-- 🆕 추가 -->
-<link rel="stylesheet" href="css/upload.css">
 </head>
+
 <body>
   <!-- 세로 모드일 때 가로로 돌리라는 안내 -->
   <div class="rotate-overlay">
@@ -46,17 +45,17 @@
             <div class="method-hint">파일에서 PDF를 불러와요</div>
           </button>
 
-          <button class="method-card" data-method="xml">
+          <button class="method-card" data-method="musicxml">
             <div class="method-icon">🎼</div>
-            <div class="method-label">MusicXML</div>
-            <div class="method-hint">.xml / .mxl 악보 파일</div>
+            <div class="method-label">MusicXML 파일</div>
+            <div class="method-hint">.xml / .musicxml / .mxl 형식</div>
           </button>
         </div>
 
-        <!-- 숨겨진 input들 (각 카드마다 다른 동작) -->
-        <input type="file" id="file-library" accept="image/*" hidden>
-        <input type="file" id="file-pdf"     accept=".pdf"    hidden>
-        <input type="file" id="file-xml"     accept=".xml,.mxl,.musicxml" hidden>
+        <!-- 숨겨진 input들 -->
+        <input type="file" id="file-library"  accept="image/*"             hidden>
+        <input type="file" id="file-pdf"      accept=".pdf"                hidden>
+        <input type="file" id="file-musicxml" accept=".xml,.musicxml,.mxl" hidden>
 
         <div id="status" class="status"></div>
       </div>

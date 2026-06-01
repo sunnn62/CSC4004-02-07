@@ -11,10 +11,9 @@ const statusArea = document.getElementById("status");
 
 // method → 파일 input 매핑
 const fileInputMap = {
-  camera:  document.getElementById("file-camera"),
-  library: document.getElementById("file-library"),
-  pdf:     document.getElementById("file-pdf"),
-  xml:     document.getElementById("file-xml"),
+  library:  document.getElementById("file-library"),
+  pdf:      document.getElementById("file-pdf"),
+  musicxml: document.getElementById("file-musicxml"),
 };
 
 // === method-card 클릭 → 해당 파일 input 열기 ===
