@@ -12,6 +12,10 @@ from functools import partial
 from pathlib import Path
 from typing import List, Optional
 
+from groq import Groq
+from dotenv import load_dotenv
+load_dotenv(encoding='utf-8-sig')
+
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -448,3 +452,49 @@ async def save_result(result: PracticeResult):
     with open(result_path, "w", encoding="utf-8") as f:
         json.dump(result.model_dump(), f, ensure_ascii=False)
     return {"message": "저장 완료"}
+
+
+# ---------------------------------------------------------------------------
+# POST /api/analyze  — Claude AI 연주 분석
+# ---------------------------------------------------------------------------
+class AnalyzeRequest(BaseModel):
+    songTitle: str
+    pitchAccuracy: float
+    timingAccuracy: Optional[float] = None
+    timingFast: int = 0
+    timingSlow: int = 0
+    errorMeasures: list = []
+    elapsedSec: float = 0
+
+@app.post("/api/analyze")
+async def analyze_performance(req: AnalyzeRequest):
+    api_key = (os.environ.get("GROQ_API_KEY") or "").strip()
+    if not api_key:
+        raise AppError(503, "NO_API_KEY", "GROQ_API_KEY 환경변수가 설정되지 않았습니다")
+
+    mistake_summary = ""
+    if req.errorMeasures:
+        top = sorted(req.errorMeasures, key=lambda x: x.get("right", 0) + x.get("left", 0), reverse=True)[:3]
+        mistake_summary = ", ".join([f"{m['measure']}마디" for m in top])
+
+    prompt = f"""피아노 연습 결과를 분석해주세요. 친근하고 격려하는 톤으로 2~3문장으로 짧게 작성해주세요.
+
+곡: {req.songTitle}
+음정 정확도: {req.pitchAccuracy}%
+{f"박자 정확도: {req.timingAccuracy}%" if req.timingAccuracy is not None else ""}
+{f"빠른 실수: {req.timingFast}회, 느린 실수: {req.timingSlow}회" if req.timingFast or req.timingSlow else ""}
+{f"실수 많은 마디: {mistake_summary}" if mistake_summary else ""}
+연주 시간: {int(req.elapsedSec // 60)}분 {int(req.elapsedSec % 60)}초"""
+
+    try:
+        client = Groq(api_key=api_key)
+        completion = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+        )
+        return {"analysis": completion.choices[0].message.content}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise AppError(500, "AI_ERROR", str(e))
