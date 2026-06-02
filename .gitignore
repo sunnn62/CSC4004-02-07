@@ -22,3 +22,5 @@ sheet_parser/poppler/
 # ===== OS =====
 .DS_Store
 Thumbs.db
+.env
+backend/.env

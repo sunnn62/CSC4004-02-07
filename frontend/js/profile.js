@@ -3,7 +3,10 @@ const STATS_KEY   = 'piano_stats';
 
 function loadProfile() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : { nickname: '에지', joinDate: new Date().toISOString() };
+  if (raw) return JSON.parse(raw);
+  const defaults = { nickname: '에지', joinDate: new Date().toISOString() };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
+  return defaults;
 }
 
 function saveProfile(data) {
@@ -28,10 +31,10 @@ function formatTime(minutes) {
 }
 
 function getLevel(totalMinutes) {
-  if (totalMinutes >= 3000) return '🏆 마스터';
-  if (totalMinutes >= 1200) return '🎼 중급자';
-  if (totalMinutes >= 300)  return '🎹 초보자';
-  return '🎹 입문자';
+  if (totalMinutes >= 3000) return '마스터';
+  if (totalMinutes >= 1200) return '중급자';
+  if (totalMinutes >= 300)  return '초보자';
+  return '입문자';
 }
 
 function setAvatar(nickname) {

@@ -22,11 +22,13 @@
         <h1 class="song-title" id="song-title">곡 제목</h1>
         <div class="song-meta" id="song-meta">로딩 중...</div>
       </div>
+
       <div class="midi-status" id="midi-status" data-state="connecting">
         <span class="status-dot"></span>
         <span class="status-text">연결 확인 중…</span>
         <button class="midi-refresh-btn" id="btn-midi-refresh" title="연결 다시 확인" aria-label="MIDI 연결 다시 확인">↻</button>
       </div>
+
       <div class="timer" id="timer">00:00 / --:--</div>
     </header>
 
@@ -57,6 +59,7 @@
       <div class="main-controls">
         <button class="icon-btn" id="btn-metronome" title="메트로놈">⏱</button>
         <button class="primary-btn" id="btn-pause">⏸ 일시정지</button>
+        <button class="sim-btn" id="btn-simulate">▶ 시뮬레이션</button>
         <div id="judgment-banner" class="judgment-banner"></div>
       </div>
 
@@ -115,7 +118,8 @@
 
   <!-- 스크립트 -->
   <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
-  <script src="js/api.js"></script>
+<script src="js/api.js"></script>
+  <script src="js/simulation.js"></script>
   <script type="module" src="js/osmd-render.js"></script>
 </body>
 </html>

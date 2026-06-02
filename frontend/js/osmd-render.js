@@ -29,6 +29,61 @@ function startTimerOnce() {
   stopwatch.start();
 }
 
+// === MIDI 재연결 버튼 UI ===
+const midiBtn = document.getElementById('btn-midi-reconnect');
+
+/**
+ * MIDI 버튼 상태 변경
+ * @param {'idle'|'connecting'|'connected'|'error'} state
+ */
+function setMidiState(state) {
+  if (!midiBtn) return;
+  midiBtn.className = 'midi-reconnect-btn';  // 기존 상태 클래스 초기화
+
+  const iconEl  = midiBtn.querySelector('.midi-btn-icon');
+  const labelEl = midiBtn.querySelector('.midi-btn-label');
+
+  switch (state) {
+    case 'connecting':
+      midiBtn.classList.add('connecting');
+      if (iconEl)  iconEl.textContent  = '⏳';
+      if (labelEl) labelEl.textContent = '연결 중...';
+      break;
+    case 'connected':
+      midiBtn.classList.add('connected');
+      if (iconEl)  iconEl.textContent  = '✓';
+      if (labelEl) labelEl.textContent = '연결됨';
+      break;
+    case 'error':
+      midiBtn.classList.add('error');
+      if (iconEl)  iconEl.textContent  = '⚠';
+      if (labelEl) labelEl.textContent = '재연결';
+      break;
+    default: // 'idle'
+      if (iconEl)  iconEl.textContent  = '🔌';
+      if (labelEl) labelEl.textContent = 'MIDI 연결';
+  }
+}
+
+/** MIDI 재연결 시도 (service가 없으면 스킵) */
+async function reconnectMidi() {
+  if (!service) {
+    console.warn('⚠ service 없음 — scoreJson 로드 후 자동 연결됩니다.');
+    return;
+  }
+  setMidiState('connecting');
+  try {
+    await service.start();
+    setMidiState('connected');
+    console.log('✅ MIDI 재연결 성공');
+  } catch (e) {
+    setMidiState('error');
+    console.error('❌ MIDI 재연결 실패:', e);
+  }
+}
+
+midiBtn?.addEventListener('click', reconnectMidi);
+
 // 자동 스크롤 상태
 let systemMeasureRanges = [];
 let currentSystemIndex = 0;
@@ -587,10 +642,16 @@ function setupComparator(scoreJson) {
     window.scoreView.showResultScreen();
   };
 
+  setMidiState('connecting');
   service.start()
-    .then(() => console.log("✅ MIDI 연결 완료 — 첫 음 입력 시 타이머 시작"))
-    .catch(e => console.error("MIDI 연결 실패:", e));
-
+    .then(() => {
+      setMidiState('connected');
+      console.log('✅ MIDI 연결 완료 — 첫 음 입력 시 타이머 시작');
+    })
+    .catch(e => {
+      setMidiState('error');
+      console.error('❌ MIDI 연결 실패:', e);
+    });
 
   console.log("✅ D 비교 엔진 연동 완료 (배속:", settings.speedMultiplier ?? 1.0, ")");
 }
