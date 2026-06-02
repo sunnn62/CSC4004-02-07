@@ -21,6 +21,7 @@ let errorLog = [];
 
 // 통계 + 진행률
 let stats = { correct: 0, wrong: 0 };
+let timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };   // 박자 판정 집계 (정확/빠름/느림)
 let currentNoteIndex = 0;
 let lastCursorBeat = null;     // 직전에 커서를 넘긴 음표의 absoluteStartBeat (같은 박자면 커서 고정)
 let timerStarted = false;   // 첫 음 입력 전까지 타이머 대기 (팀원 구현)
@@ -301,6 +302,7 @@ async function loadScore(source) {
   }
 
   stats = { correct: 0, wrong: 0 };
+  timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };
   errorLog = [];
   currentNoteIndex = 0;
   updateStatsUI();
@@ -384,6 +386,11 @@ window.scoreView = {
         errorLog.push({ measureNumber, hand, expectedMidi });
       }
     }
+    // 박자 판정 집계 (null은 면제 — 첫 음/꾸밈음/일시정지 재개 직후)
+    if (timingResult === '정확')      { timingStats.total++; timingStats.correct++; }
+    else if (timingResult === '빠름') { timingStats.total++; timingStats.fast++; }
+    else if (timingResult === '느림') { timingStats.total++; timingStats.slow++; }
+
     updateStatsUI();
     showJudgmentBanner(pitchResult, timingResult);
   },
@@ -420,6 +427,10 @@ window.scoreView = {
       finishedNotes: currentNoteIndex,
       errorLog: errorLog,
       elapsedSec: stopwatch.elapsedSec,
+      timingTotal: timingStats.total,
+      timingCorrect: timingStats.correct,
+      timingFast: timingStats.fast,
+      timingSlow: timingStats.slow,
     };
     sessionStorage.setItem('practiceResult', JSON.stringify(result));
     window.location.href = 'result.html';
@@ -429,6 +440,7 @@ window.scoreView = {
     graphicalNotes.forEach(g => colorGraphicalNote(g, '#000000'));
     osmd.cursor.reset();
     stats = { correct: 0, wrong: 0 };
+    timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };
     currentNoteIndex = 0;
     lastCursorBeat = null;
     errorLog = [];
