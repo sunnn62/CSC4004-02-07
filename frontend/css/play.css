@@ -83,8 +83,45 @@ button { font-family: inherit; cursor: pointer; }
 }
 .midi-status .status-dot {
   width: 8px; height: 8px;
-  background: var(--accent-green);
+  background: var(--text-secondary);
   border-radius: 50%;
+  transition: background 0.2s ease;
+}
+.midi-status[data-state="connected"] .status-dot {
+  background: var(--accent-green);
+}
+.midi-status[data-state="disconnected"] .status-dot,
+.midi-status[data-state="unsupported"] .status-dot {
+  background: var(--note-wrong);
+  animation: midi-pulse 1.4s ease-in-out infinite;
+}
+@keyframes midi-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.midi-refresh-btn {
+  width: 22px; height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.midi-refresh-btn:hover {
+  background: rgba(0,0,0,0.08);
+  color: var(--text-primary);
+}
+.midi-refresh-btn.spinning {
+  animation: midi-refresh-spin 0.6s linear infinite;
+  pointer-events: none;
+}
+@keyframes midi-refresh-spin {
+  to { transform: rotate(360deg); }
 }
 .timer {
   font-size: 14px; font-weight: 600;
