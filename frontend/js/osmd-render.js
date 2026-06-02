@@ -495,8 +495,80 @@ function setupMetronome() {
   console.log(`✅ 메트로놈 설정: ♩=${baseTempo}×${speed}=${(baseTempo*speed).toFixed(1)} BPM, ${numerator}/${denominator}`);
 }
 
+// === MIDI 연결 상태 감지 (onstatechange) + 수동 재연결 ===
+function setMidiStatusUI(state, text) {
+  const el = document.getElementById('midi-status');
+  if (!el) return;
+  el.dataset.state = state;
+  const textEl = el.querySelector('.status-text');
+  if (textEl) textEl.textContent = text;
+}
+
+function pickConnectedInputName(midiAccess) {
+  for (const input of midiAccess.inputs.values()) {
+    if (input.state === 'connected') return input.name || '전자 피아노';
+  }
+  return null;
+}
+
+let _midiAccess = null;
+let _refreshMidiStatus = () => {};
+
+async function setupMidiStatusWatcher() {
+  if (!navigator.requestMIDIAccess) {
+    setMidiStatusUI('unsupported', 'WebMIDI 미지원 (Chrome 권장)');
+    return;
+  }
+  try {
+    _midiAccess = await navigator.requestMIDIAccess();
+    _refreshMidiStatus = () => {
+      const name = pickConnectedInputName(_midiAccess);
+      if (name) {
+        setMidiStatusUI('connected', `${name} 연결됨`);
+      } else {
+        setMidiStatusUI('disconnected', '연결 끊김 — USB 확인');
+      }
+    };
+    // addEventListener는 D의 MidiInput.onstatechange 할당과 충돌 X
+    _midiAccess.addEventListener('statechange', _refreshMidiStatus);
+    _refreshMidiStatus();
+  } catch (e) {
+    console.warn('MIDI 접근 실패:', e);
+    setMidiStatusUI('unsupported', 'MIDI 권한 거부됨');
+  }
+}
+
+async function retryMidiConnection() {
+  setMidiStatusUI('connecting', '연결 확인 중…');
+
+  // access가 아직 없으면 (권한 거부/미지원/최초 실패) 처음부터 셋업
+  if (!_midiAccess) {
+    await setupMidiStatusWatcher();
+  } else {
+    _refreshMidiStatus();
+  }
+
+  // D 서비스도 재연결 시도 (있을 때만, hot-rebind)
+  if (service) {
+    try { await service.start(); } catch (e) { console.warn('D 재연결 실패:', e); }
+  }
+}
+
+document.getElementById('btn-midi-refresh')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-midi-refresh');
+  if (!btn || btn.classList.contains('spinning')) return;
+  btn.classList.add('spinning');
+  const startedAt = performance.now();
+  await retryMidiConnection();
+  // 최소 600ms 회전 유지 (눌렀다는 시각적 피드백)
+  const elapsed = performance.now() - startedAt;
+  setTimeout(() => btn.classList.remove('spinning'), Math.max(0, 600 - elapsed));
+});
+
 // === 시작 ===
 async function bootstrap() {
+  setupMidiStatusWatcher();   // MIDI 상태 UI 감지 (fire-and-forget, D 무관)
+
   const params = new URLSearchParams(window.location.search);
   const scoreId = params.get("scoreId");
 
