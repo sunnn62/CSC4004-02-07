@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피AI노 - 연주 기록</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/score-history.css">
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-header">
+      <button class="back-btn" onclick="history.back()">‹</button>
+      <h1 class="page-title" id="song-title">로딩 중...</h1>
+      <div></div>
+    </header>
+
+    <!-- 집계 히어로 -->
+    <section class="hero-card">
+      <div class="hero-stat">
+        <div class="hero-value" id="total-plays">—</div>
+        <div class="hero-label">총 연주</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-value" id="avg-score">—</div>
+        <div class="hero-label">평균 점수</div>
+      </div>
+      <div class="hero-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-value" id="best-score">—</div>
+        <div class="hero-label">최고 점수</div>
+      </div>
+    </section>
+
+    <!-- 연주 기록 -->
+    <section class="history-section">
+      <h2 class="section-title">연주 기록</h2>
+      <ul class="history-list" id="history-list">
+        <li class="history-empty">아직 연주 기록이 없어요.</li>
+      </ul>
+    </section>
+
+  </div>
+  <script src="js/score-history.js"></script>
+</body>
+</html>

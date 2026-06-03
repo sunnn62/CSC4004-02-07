@@ -1,6 +1,7 @@
 // ── 데이터 로드 ────────────────────────────────────────────
 const raw  = sessionStorage.getItem('practiceResult');
 const data = raw ? JSON.parse(raw) : null;
+let _historyId = null; // AI 분석 결과를 나중에 히스토리에 붙이기 위한 ID
 
 // ── 유틸 ─────────────────────────────────────────────────
 function formatTime(sec) {
@@ -176,6 +177,17 @@ async function loadAnalysis() {
     const text = json.analysis ?? '분석 결과를 받지 못했어요.';
     contentEl.innerHTML = `<p class="ai-text">${text}</p>`;
 
+    // 히스토리 엔트리에 AI 분석 저장
+    if (_historyId) {
+      const HISTORY_KEY = 'piano_history';
+      const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      const entry = hist.find(e => e.id === _historyId);
+      if (entry) {
+        entry.aiAnalysis = text;
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+      }
+    }
+
   } catch (err) {
     contentEl.innerHTML = `
       <div class="ai-error">
@@ -222,6 +234,40 @@ function updateProfileStats() {
   stats.bestStreak = Math.max(stats.bestStreak ?? 0, stats.streak ?? 0);
 
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+
+  // 연주 기록 히스토리 저장
+  const HISTORY_KEY = 'piano_history';
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+
+  // 오류 마디 그룹핑 (errorLog 원본 대신 집계 형태로 저장)
+  const errorGroups = new Map();
+  (data.errorLog ?? []).forEach(e => {
+    const m = e.measureNumber ?? 0;
+    if (!errorGroups.has(m)) errorGroups.set(m, { measure: m, right: 0, left: 0 });
+    const g = errorGroups.get(m);
+    if (e.hand === '오른손') g.right++; else g.left++;
+  });
+
+  _historyId = Date.now().toString();
+  history.unshift({
+    id: _historyId,
+    scoreId: data.scoreId ?? 'unknown',
+    songTitle: data.songTitle ?? '알 수 없는 곡',
+    date: new Date().toISOString(),
+    pitchAcc,
+    timingAcc,
+    score,
+    elapsedSec: data.elapsedSec ?? 0,
+    correctNotes: data.correctNotes ?? 0,
+    totalNotes: data.totalNotes ?? 0,
+    timingCorrect: data.timingCorrect ?? 0,
+    timingTotal: data.timingTotal ?? 0,
+    timingFast: data.timingFast ?? 0,
+    timingSlow: data.timingSlow ?? 0,
+    errorMeasures: [...errorGroups.values()].sort((a, b) => a.measure - b.measure),
+  });
+  if (history.length > 500) history.splice(500);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
 // ── 시작 ─────────────────────────────────────────────────
