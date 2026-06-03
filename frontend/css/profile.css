@@ -164,7 +164,7 @@ body {
   box-shadow: var(--shadow-card);
   margin-bottom: 16px;
 }
-.streak-left {}
+
 .streak-count {
   font-size: 28px;
   font-weight: 700;

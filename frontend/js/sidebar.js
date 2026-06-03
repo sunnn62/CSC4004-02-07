@@ -11,13 +11,6 @@ const NAV_ITEMS = [
   { id: 'practice', icon: '▶',  label: '연습',   href: 'index.html' },
 ];
 
-// MIDI 상태 (나중에 D 통합 시 동적으로 업데이트할 수 있게 분리)
-const DEVICE_STATUS = {
-  connected: true,                  // 현재는 정적, 추후 동적 반영
-  label: '전자 피아노 연결됨',
-  detail: 'Casio CDP-S360',
-};
-
 export function renderSidebar(activeId = 'practice', containerSelector = '#sidebar-container') {
   const container = document.querySelector(containerSelector);
   if (!container) {
@@ -41,14 +34,6 @@ export function renderSidebar(activeId = 'practice', containerSelector = '#sideb
       <nav class="nav">
         ${navHtml}
       </nav>
-
-      <div class="device-status">
-        <div class="status-dot"></div>
-        <div class="status-text">
-          <div class="status-label">${DEVICE_STATUS.label}</div>
-          <div class="status-detail">${DEVICE_STATUS.detail}</div>
-        </div>
-      </div>
     </aside>
   `;
 }
