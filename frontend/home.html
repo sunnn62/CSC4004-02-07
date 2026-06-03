@@ -15,12 +15,20 @@
     <main class="main">
       <!-- 상단 헤더 -->
       <header class="home-header">
-        <div class="date" id="today-date">—</div>
-        <div class="greeting-row">
-          <h1 class="greeting">안녕하세요, <span class="name">에지</span>님</h1>
+        <div class="header-top">
+          <div class="home-logo">
+            <img src="logo.png" alt="피AI노" class="home-logo-img">
+            <span class="home-logo-text">피<span class="logo-ai">AI</span>노</span>
+          </div>
           <div class="header-right">
-            <button class="header-icon-btn" onclick="location.href='#'">📊 기록</button>
-            <button class="header-icon-btn" onclick="location.href='profile.html'">👤 프로필</button>
+<button class="header-icon-btn" onclick="location.href='score-history.html'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              기록
+            </button>
+            <button class="header-icon-btn" onclick="location.href='profile.html'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              프로필
+            </button>
             <div class="weekly-stat">
               <span class="weekly-label">이번 주</span>
               <strong id="weekly-time">1시간 32분</strong>
