@@ -39,7 +39,21 @@ function getLevel(totalMinutes) {
 
 function setAvatar(nickname) {
   const el = document.getElementById('avatar-circle');
-  if (el) el.textContent = nickname.charAt(0);
+  if (!el) return;
+  const profile = loadProfile();
+  if (profile.avatarDataUrl) {
+    el.style.backgroundImage = `url(${profile.avatarDataUrl})`;
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.textContent = '';
+    el.querySelector('#avatar-input') && el.appendChild(document.getElementById('avatar-input'));
+  } else {
+    el.style.backgroundImage = '';
+    // input 태그 유지하고 첫 글자만 표시
+    const input = document.getElementById('avatar-input');
+    el.textContent = nickname.charAt(0);
+    if (input) el.appendChild(input);
+  }
 }
 
 function render() {
@@ -93,5 +107,23 @@ function saveNickname() {
   document.getElementById('nickname-edit').style.display = 'none';
   render();
 }
+
+// 아바타 클릭 → 파일 선택
+document.getElementById('avatar-circle').addEventListener('click', () => {
+  document.getElementById('avatar-input').click();
+});
+
+document.getElementById('avatar-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const profile = loadProfile();
+    profile.avatarDataUrl = ev.target.result;
+    saveProfile(profile);
+    setAvatar(profile.nickname);
+  };
+  reader.readAsDataURL(file);
+});
 
 render();
