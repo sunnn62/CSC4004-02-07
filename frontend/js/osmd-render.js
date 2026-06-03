@@ -14,11 +14,16 @@ const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
 let graphicalNotes = [];
 let graphicalNotesByMeasure = new Map();
 let noteIdMap = new Map();
+let noteBeatMap = new Map();      // noteId -> absoluteStartBeat
+let noteNextBeatMap = new Map();  // noteId -> 다음 연주 음표의 absoluteStartBeat (없으면 null)
+let notePitchMap = new Map();     // noteId -> pitches[] (양손 음표를 개별 색칠하기 위함)
 let errorLog = [];
 
 // 통계 + 진행률
 let stats = { correct: 0, wrong: 0 };
+let timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };   // 박자 판정 집계 (정확/빠름/느림)
 let currentNoteIndex = 0;
+let lastCursorBeat = null;     // 직전에 커서를 넘긴 음표의 absoluteStartBeat (같은 박자면 커서 고정)
 let timerStarted = false;   // 첫 음 입력 전까지 타이머 대기 (팀원 구현)
 
 
@@ -105,6 +110,23 @@ function colorCurrentCursorNotes(color) {
     const g = graphicalNotes.find(gn => gn.sourceNote === sn);
     if (g) colorGraphicalNote(g, color);
   }
+}
+
+// 커서 아래 음표 중, 지정한 MIDI pitch에 해당하는 음표만 색칠한다.
+// 양손 동시 타건에서 오른손/왼손을 각각 다른 색(맞음/틀림)으로 칠하기 위함.
+function colorCursorNotesByPitch(targetPitches, color) {
+  const sourceNotes = osmd.cursor.NotesUnderCursor();
+  if (!sourceNotes) return false;
+  let colored = false;
+  for (const sn of sourceNotes) {
+    if (sn.isRest && sn.isRest()) continue;
+    const midi = sn.Pitch ? sn.Pitch.halfTone + 12 : null;
+    if (midi != null && targetPitches.includes(midi)) {
+      const g = graphicalNotes.find(gn => gn.sourceNote === sn);
+      if (g) { colorGraphicalNote(g, color); colored = true; }
+    }
+  }
+  return colored;
 }
 
 function pitchResultToColor(pitchResult) {
@@ -280,6 +302,7 @@ async function loadScore(source) {
   }
 
   stats = { correct: 0, wrong: 0 };
+  timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };
   errorLog = [];
   currentNoteIndex = 0;
   updateStatsUI();
@@ -298,7 +321,28 @@ async function loadScore(source) {
 window.scoreView = {
   attachScoreJson(scoreJson) {
     noteIdMap.clear();
-    console.log("[scoreView] JSON 받음. 매핑 구축은 차후 작업.");
+    noteBeatMap.clear();
+    noteNextBeatMap.clear();
+    notePitchMap.clear();
+    lastCursorBeat = null;
+
+    // 연주 대상(shouldPlay) 음표를 순서대로 모은다.
+    const playSeq = [];
+    for (const measure of scoreJson?.measures ?? []) {
+      for (const note of measure.notes ?? []) {
+        if (note.id != null && note.absoluteStartBeat != null) {
+          noteBeatMap.set(note.id, note.absoluteStartBeat);
+          notePitchMap.set(note.id, note.pitches ?? []);
+          if (note.shouldPlay) playSeq.push(note);
+        }
+      }
+    }
+    // 각 음표의 "다음 연주 음표 박자"를 기록 (다음 음이 같은 박자면 양손 동시 타건).
+    for (let i = 0; i < playSeq.length; i++) {
+      const nextBeat = i + 1 < playSeq.length ? playSeq[i + 1].absoluteStartBeat : null;
+      noteNextBeatMap.set(playSeq[i].id, nextBeat);
+    }
+    console.log(`[scoreView] JSON 받음. noteBeatMap ${noteBeatMap.size}, 연주음표 ${playSeq.length}개.`);
   },
 
   getCurrentExpected() {
@@ -314,9 +358,16 @@ window.scoreView = {
   highlightNote(noteId, pitchResult, timingResult) {
     startTimerOnce();   // 첫 음 입력 시 타이머 시작 (팀원 구현)
 
+    // 색칠은 '현재 커서 위치'(= 방금 친 음)에 한다. 커서 이동은 advanceCursor가 담당.
+    // 양손 동시 타건에서 오른손/왼손을 각각 맞음/틀림 색으로 칠하기 위해,
+    // 그 음표의 pitch에 해당하는 음표만 골라 색칠한다.
     const color = pitchResultToColor(pitchResult);
+    const targetPitches = notePitchMap.get(noteId);
     if (noteId && noteIdMap.has(noteId)) {
       colorGraphicalNote(noteIdMap.get(noteId), color);
+    } else if (targetPitches && targetPitches.length > 0) {
+      const ok = colorCursorNotesByPitch(targetPitches, color);
+      if (!ok) colorCurrentCursorNotes(color);   // 매칭 실패 시 안전망
     } else {
       colorCurrentCursorNotes(color);
     }
@@ -335,13 +386,32 @@ window.scoreView = {
         errorLog.push({ measureNumber, hand, expectedMidi });
       }
     }
+    // 박자 판정 집계 (null은 면제 — 첫 음/꾸밈음/일시정지 재개 직후)
+    if (timingResult === '정확')      { timingStats.total++; timingStats.correct++; }
+    else if (timingResult === '빠름') { timingStats.total++; timingStats.fast++; }
+    else if (timingResult === '느림') { timingStats.total++; timingStats.slow++; }
+
     updateStatsUI();
     showJudgmentBanner(pitchResult, timingResult);
   },
 
   advanceCursor(noteId) {
-    osmd.cursor.next();
-    currentNoteIndex++;
+    currentNoteIndex++;   // 음표 단위 진행률은 항상 증가
+
+    // 커서는 색칠(highlightNote) 이후에, '다음 칠 음'으로 이동시킨다.
+    //  - 다음 연주 음표가 같은 박자(양손 동시 타건)면 → 커서를 유지 (색칠 위치 보존, 1칸만 이동)
+    //  - 다음 음표가 다른 박자거나 마지막이면 → 한 칸 이동
+    //  - noteId가 없거나(데모 버튼) 맵에 없으면 → 항상 한 칸 이동
+    if (noteId == null || !noteBeatMap.has(noteId)) {
+      osmd.cursor.next();
+    } else {
+      const beat = noteBeatMap.get(noteId);
+      const nextBeat = noteNextBeatMap.get(noteId);
+      if (nextBeat == null || nextBeat !== beat) {
+        osmd.cursor.next();
+      }
+    }
+
     updateProgressUI();
     updateAutoScroll();
   },
@@ -357,6 +427,10 @@ window.scoreView = {
       finishedNotes: currentNoteIndex,
       errorLog: errorLog,
       elapsedSec: stopwatch.elapsedSec,
+      timingTotal: timingStats.total,
+      timingCorrect: timingStats.correct,
+      timingFast: timingStats.fast,
+      timingSlow: timingStats.slow,
     };
     sessionStorage.setItem('practiceResult', JSON.stringify(result));
     window.location.href = 'result.html';
@@ -366,7 +440,9 @@ window.scoreView = {
     graphicalNotes.forEach(g => colorGraphicalNote(g, '#000000'));
     osmd.cursor.reset();
     stats = { correct: 0, wrong: 0 };
+    timingStats = { total: 0, correct: 0, fast: 0, slow: 0 };
     currentNoteIndex = 0;
+    lastCursorBeat = null;
     errorLog = [];
     timerStarted = false;   // 다음 첫 음에서 타이머 재시작 (팀원 구현)
     updateStatsUI();

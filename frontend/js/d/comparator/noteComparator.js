@@ -74,9 +74,17 @@ export class NoteComparator {
       groupTimingResult = judgeTiming(actMs, expMs, firstNote.isGrace, this._toleranceMs);
     }
 
+    // ── 여분 음 판정 ──
+    // 같은 박자에 기대하는 음 개수보다 더 많이 눌렀으면 '여분 음'으로 본다.
+    // (예: '시'만 쳐야 하는데 '시'+'도'를 같이 누름)
+    // 개수가 같으면 한 손이 틀린 음을 친 것일 뿐이므로, 음표별로 개별 판정한다.
+    // (양손에서 오른손만 틀려도 왼손이 연좌로 wrong 되지 않게)
+    const allExpectedPitches = beatGroup.flatMap((n) => n.pitches);
+    const hasExtra = playedNotes.length > allExpectedPitches.length;
+
     // ── 그룹 내 각 음표를 순서대로 판정 & 결과 전달 ──
     beatGroup.forEach((note, idx) => {
-      const pitchResult = this._judgePitch(playedNotes, note.pitches);
+      const pitchResult = this._judgePitch(playedNotes, note.pitches, hasExtra);
       // 박자 판정: 그룹의 첫 번째 음만 적용, 나머지는 null (동시 타건)
       const timingResult = idx === 0 ? groupTimingResult : null;
 
@@ -126,10 +134,11 @@ export class NoteComparator {
 
   // ───────────────────────────── private ─────────────────────────────────
 
-  _judgePitch(playedNotes, expectedPitches) {
-    // 화음: 기대 음표 전부 포함되면 correct (여분 음 허용)
-    const allMatch = expectedPitches.every((p) => playedNotes.includes(p));
-    return allMatch ? 'correct' : 'wrong';
+  _judgePitch(playedNotes, expectedPitches, hasExtra = false) {
+    // 이 음표의 기대 음이 모두 눌렸는가
+    const noteHit = expectedPitches.every((p) => playedNotes.includes(p));
+    // 같은 박자에 여분 음(기대보다 많이 누름)이 있으면 이 음표도 틀린 것으로 본다.
+    return (noteHit && !hasExtra) ? 'correct' : 'wrong';
   }
 
   /**
