@@ -34,8 +34,8 @@ export function renderSidebar(activeId = 'practice', containerSelector = '#sideb
   container.innerHTML = `
     <aside class="sidebar">
       <div class="logo">
-        <div class="logo-icon">🎹</div>
-        <div class="logo-text">피아니</div>
+        <img src="logo.png" alt="피AI노" class="logo-img">
+        <div class="logo-text">피<span class="logo-ai">AI</span>노</div>
       </div>
 
       <nav class="nav">
