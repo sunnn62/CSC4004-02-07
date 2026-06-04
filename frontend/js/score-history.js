@@ -27,7 +27,9 @@ function render() {
     ? all.filter(e => e.scoreId === scoreId)
     : all;
 
-  const title = entries[0]?.songTitle ?? (scoreId ? '알 수 없는 곡' : '전체 연주 기록');
+  const title = scoreId
+    ? (entries[0]?.songTitle ?? '알 수 없는 곡')
+    : '연주 기록';
   document.getElementById('song-title').textContent = title;
 
   if (entries.length > 0) {
