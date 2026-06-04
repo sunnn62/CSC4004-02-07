@@ -270,45 +270,54 @@ function updateProfileStats() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
-// ── 공유 ─────────────────────────────────────────────────
-document.getElementById('btn-share')?.addEventListener('click', async () => {
+// ── 이미지 저장 (공유) ────────────────────────────────────
+document.getElementById('btn-share')?.addEventListener('click', saveAsImage);
+
+async function saveAsImage() {
   if (!data) return;
 
-  const pitchAcc  = data.totalNotes
-    ? Math.round(data.correctNotes / data.totalNotes * 100) : 0;
-  const timingAcc = data.timingTotal
-    ? Math.round(data.timingCorrect / data.timingTotal * 100) : null;
-  const score = timingAcc !== null
-    ? Math.round(pitchAcc * 0.7 + timingAcc * 0.3) : pitchAcc;
+  const btn = document.getElementById('btn-share');
+  btn.textContent = '저장 중...';
+  btn.disabled = true;
 
-  const lines = [
-    '🎹 피아니 연주 결과',
-    `곡: ${data.songTitle ?? '알 수 없는 곡'}`,
-    `점수: ${score}/100`,
-    `음정 정확도: ${pitchAcc}%`,
-    timingAcc !== null ? `박자 정확도: ${timingAcc}%` : null,
-    data.elapsedSec != null ? `연주 시간: ${formatTime(data.elapsedSec)}` : null,
-  ].filter(Boolean);
-  const text = lines.join('\n');
+  // 캡처에서 숨길 UI 요소 (버튼류)
+  const hideEls = [
+    ...document.querySelectorAll('.close-btn, #btn-share, .action-buttons, .btn-retry, .ai-card'),
+  ];
+  hideEls.forEach(el => { el.dataset._vis = el.style.visibility; el.style.visibility = 'hidden'; });
 
-  // Web Share API 우선 (모바일/지원 브라우저)
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: '피아니 연주 결과', text });
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return; // 사용자 취소
-    }
-  }
-
-  // 폴백: 클립보드 복사
   try {
-    await navigator.clipboard.writeText(text);
-    showShareToast('클립보드에 복사됐어요! 📋');
-  } catch {
-    showShareToast('공유를 지원하지 않는 환경이에요.');
+    const target = document.querySelector('.result-screen');
+    const canvas = await html2canvas(target, {
+      scale: 2,               // 고해상도 (Retina 대응)
+      backgroundColor: '#F5F1E8',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+
+    // 파일명: 피아니_곡명_날짜.png
+    const safeName = (data.songTitle ?? '연주결과').replace(/[\\/:*?"<>|]/g, '');
+    const date = new Date().toLocaleDateString('ko-KR', {
+      year: '2-digit', month: '2-digit', day: '2-digit',
+    }).replace(/\.\s*/g, '').replace(/\.$/, '');
+    const filename = `피아니_${safeName}_${date}.png`;
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    showShareToast('이미지가 저장됐어요! 🖼️');
+  } catch (e) {
+    console.error('이미지 저장 실패:', e);
+    showShareToast('이미지 저장에 실패했어요.');
+  } finally {
+    hideEls.forEach(el => { el.style.visibility = el.dataset._vis ?? ''; delete el.dataset._vis; });
+    btn.textContent = '저장';
+    btn.disabled = false;
   }
-});
+}
 
 function showShareToast(msg) {
   let toast = document.getElementById('share-toast');
@@ -320,6 +329,7 @@ function showShareToast(msg) {
       'background:#1A1A1A', 'color:#fff', 'padding:10px 20px',
       'border-radius:100px', 'font-size:13px', 'font-weight:500',
       'z-index:9999', 'white-space:nowrap', 'pointer-events:none',
+      'transition:opacity .3s',
     ].join(';');
     document.body.appendChild(toast);
   }
