@@ -52,12 +52,55 @@ body {
 .detail-header {
   margin-bottom: 20px;
 }
+.title-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
 .song-title {
   font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.4px;
+}
+.title-edit-btn {
+  background: none; border: none;
+  font-size: 16px; cursor: pointer;
+  padding: 2px 4px; border-radius: 6px;
+  opacity: 0.4; transition: opacity .15s;
+  line-height: 1;
+}
+.title-edit-btn:hover { opacity: 1; }
+
+.title-edit-row {
+  display: flex; align-items: center; gap: 8px;
   margin-bottom: 4px;
 }
+.title-input {
+  flex: 1;
+  font-size: 18px; font-weight: 600;
+  font-family: inherit;
+  padding: 6px 12px;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  outline: none;
+  max-width: 360px;
+}
+.title-save-btn, .title-cancel-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: none; font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.title-save-btn {
+  background: var(--text-primary); color: white;
+}
+.title-save-btn:disabled { opacity: .5; cursor: default; }
+.title-cancel-btn {
+  background: var(--bg-hover); color: var(--text-secondary);
+}
+.title-cancel-btn:hover { background: var(--bg-active); }
+
 .song-composer {
   font-size: 14px;
   color: var(--text-secondary);

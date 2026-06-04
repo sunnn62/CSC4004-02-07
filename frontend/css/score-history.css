@@ -1,0 +1,176 @@
+:root {
+  --bg-main: #F5F1E8;
+  --bg-card: #FFFFFF;
+  --bg-active: #E5DFD0;
+  --text-primary: #1A1A1A;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --color-good: #2D9D4E;
+  --color-mid: #C47B1A;
+  --color-bad: #D64545;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* ── 헤더 ── */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: var(--text-primary);
+  line-height: 1;
+  padding: 0 4px;
+}
+.page-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  text-align: center;
+  flex: 1;
+}
+
+/* ── 히어로 카드 ── */
+.hero-card {
+  background: var(--text-primary);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  box-shadow: var(--shadow);
+}
+.hero-stat { flex: 1; text-align: center; }
+.hero-value {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  line-height: 1;
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.hero-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.2px;
+}
+.hero-divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(255,255,255,0.12);
+  flex-shrink: 0;
+  margin: 0 8px;
+}
+
+/* ── 섹션 ── */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ── 기록 리스트 ── */
+.history-list {
+  list-style: none;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #F0ECE2;
+  gap: 16px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.history-item:hover { background: #FAFAF7; }
+.history-item:last-child { border-bottom: none; }
+
+.history-date-col { flex-shrink: 0; min-width: 90px; }
+.history-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.history-time-label {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.history-mid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.history-song {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-elapsed {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-score {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.history-score.good { background: rgba(45,157,78,0.12); color: var(--color-good); }
+.history-score.mid  { background: rgba(196,123,26,0.12); color: var(--color-mid); }
+.history-score.bad  { background: rgba(214,69,69,0.1);  color: var(--color-bad); }
+
+.history-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}

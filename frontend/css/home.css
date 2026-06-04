@@ -33,15 +33,40 @@ body {
 
 .main {
   flex: 1;
-  padding: 28px 36px;
+  padding: 20px 28px;
   overflow-y: auto;
   max-height: 100vh;
 }
 
 /* ───── 상단 헤더 ───── */
 .home-header {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+.home-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.home-logo-img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  mix-blend-mode: darken;
+}
+.home-logo-text {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  line-height: 76px;
+}
+.logo-ai { color: #B8973A; }
 .header-right {
   display: flex;
   align-items: center;
@@ -56,15 +81,17 @@ body {
   color: var(--text-secondary);
   cursor: pointer;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 .header-icon-btn:hover {
   background: var(--bg-active);
-  color: var(--text-primary);
 }
 .date {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .greeting-row {
   display: flex;
@@ -73,9 +100,11 @@ body {
   gap: 16px;
 }
 .greeting {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.3px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--text-secondary);
+  white-space: nowrap;
 }
 .greeting .name { color: var(--text-primary); }
 
@@ -100,8 +129,8 @@ body {
   background: var(--bg-continue);
   color: var(--text-on-dark);
   border-radius: var(--radius-lg);
-  padding: 24px 28px;
-  margin-bottom: 28px;
+  padding: 36px 36px;
+  margin-bottom: 24px;
 }
 .continue-label {
   font-size: 12px;

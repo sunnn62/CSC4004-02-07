@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피AI노 - 연주 분석</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="css/session-detail.css">
+</head>
+<body>
+  <div class="page">
+
+    <header class="page-header">
+      <button class="back-btn" onclick="history.back()">‹</button>
+      <h1 class="page-title" id="song-title">연주 분석</h1>
+      <div></div>
+    </header>
+
+    <!-- 곡 정보 히어로 -->
+    <section class="hero-card">
+      <div class="hero-top">
+        <div class="hero-score-wrap">
+          <div class="hero-score" id="hero-score">--</div>
+          <div class="hero-score-label">/ 100</div>
+        </div>
+        <div class="hero-meta" id="hero-meta">—</div>
+      </div>
+    </section>
+
+    <!-- 핵심 지표 -->
+    <section class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">음정 정확도</div>
+        <div class="metric-value" id="pitch-acc">—</div>
+        <div class="metric-sub" id="pitch-sub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">박자 정확도</div>
+        <div class="metric-value" id="timing-acc">—</div>
+        <div class="metric-sub" id="timing-sub"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">연주 시간</div>
+        <div class="metric-value neutral" id="elapsed">--:--</div>
+      </div>
+    </section>
+
+    <!-- 박자 분포 -->
+    <section class="card-section">
+      <h2 class="section-title">박자 분포</h2>
+      <div class="timing-breakdown">
+        <div class="timing-row">
+          <span class="timing-label">정확</span>
+          <div class="timing-track"><div class="timing-fill correct" id="tbar-correct" style="width:0%"></div></div>
+          <span class="timing-count" id="tcnt-correct">0</span>
+        </div>
+        <div class="timing-row">
+          <span class="timing-label">빠름</span>
+          <div class="timing-track"><div class="timing-fill fast" id="tbar-fast" style="width:0%"></div></div>
+          <span class="timing-count" id="tcnt-fast">0</span>
+        </div>
+        <div class="timing-row">
+          <span class="timing-label">느림</span>
+          <div class="timing-track"><div class="timing-fill slow" id="tbar-slow" style="width:0%"></div></div>
+          <span class="timing-count" id="tcnt-slow">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 틀린 음 분석 -->
+    <section class="card-section">
+      <div class="section-header">
+        <h2 class="section-title">틀린 음 분석</h2>
+        <span class="badge" id="error-badge">0마디</span>
+      </div>
+      <ul class="error-list" id="error-list">
+        <li class="error-empty">틀린 음이 없어요</li>
+      </ul>
+    </section>
+
+    <!-- AI 분석 -->
+    <section class="card-section">
+      <div class="section-header">
+        <h2 class="section-title">AI 연주 분석</h2>
+        <span class="ai-badge">AI</span>
+      </div>
+      <div id="ai-content" class="ai-content">
+        <div class="ai-loading">
+          <div class="spinner"></div>
+          <span>분석 중...</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+  <script src="js/session-detail.js"></script>
+</body>
+</html>
