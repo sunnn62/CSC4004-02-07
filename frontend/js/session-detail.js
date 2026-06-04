@@ -119,7 +119,16 @@ async function loadAnalysis() {
     });
     if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
     const json = await res.json();
-    contentEl.innerHTML = `<p>${json.analysis ?? '분석 결과를 받지 못했어요.'}</p>`;
+    const text = json.analysis ?? '분석 결과를 받지 못했어요.';
+    contentEl.innerHTML = `<p>${text}</p>`;
+
+    // 저장해서 다음 방문 시 재호출 안 함
+    const hist = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const saved = hist.find(e => e.id === id);
+    if (saved) {
+      saved.aiAnalysis = text;
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+    }
   } catch (err) {
     contentEl.innerHTML = `
       <div class="ai-error">
