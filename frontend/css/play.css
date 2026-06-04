@@ -186,7 +186,7 @@ button { font-family: inherit; cursor: pointer; }
 /* === 하단 컨트롤 === */
 .play-footer {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr;
   gap: 16px;
   align-items: center;
   padding: 12px 20px;

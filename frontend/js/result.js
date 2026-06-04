@@ -270,6 +270,65 @@ function updateProfileStats() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
+// ── 공유 ─────────────────────────────────────────────────
+document.getElementById('btn-share')?.addEventListener('click', async () => {
+  if (!data) return;
+
+  const pitchAcc  = data.totalNotes
+    ? Math.round(data.correctNotes / data.totalNotes * 100) : 0;
+  const timingAcc = data.timingTotal
+    ? Math.round(data.timingCorrect / data.timingTotal * 100) : null;
+  const score = timingAcc !== null
+    ? Math.round(pitchAcc * 0.7 + timingAcc * 0.3) : pitchAcc;
+
+  const lines = [
+    '🎹 피아니 연주 결과',
+    `곡: ${data.songTitle ?? '알 수 없는 곡'}`,
+    `점수: ${score}/100`,
+    `음정 정확도: ${pitchAcc}%`,
+    timingAcc !== null ? `박자 정확도: ${timingAcc}%` : null,
+    data.elapsedSec != null ? `연주 시간: ${formatTime(data.elapsedSec)}` : null,
+  ].filter(Boolean);
+  const text = lines.join('\n');
+
+  // Web Share API 우선 (모바일/지원 브라우저)
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: '피아니 연주 결과', text });
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // 사용자 취소
+    }
+  }
+
+  // 폴백: 클립보드 복사
+  try {
+    await navigator.clipboard.writeText(text);
+    showShareToast('클립보드에 복사됐어요! 📋');
+  } catch {
+    showShareToast('공유를 지원하지 않는 환경이에요.');
+  }
+});
+
+function showShareToast(msg) {
+  let toast = document.getElementById('share-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'share-toast';
+    toast.style.cssText = [
+      'position:fixed', 'bottom:24px', 'left:50%', 'transform:translateX(-50%)',
+      'background:#1A1A1A', 'color:#fff', 'padding:10px 20px',
+      'border-radius:100px', 'font-size:13px', 'font-weight:500',
+      'z-index:9999', 'white-space:nowrap', 'pointer-events:none',
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
 // ── 시작 ─────────────────────────────────────────────────
 render();
 updateProfileStats();

@@ -48,7 +48,18 @@ var api = {
   // OSMD가 fetch해서 렌더링할 URL을 반환 (요청은 OSMD가 알아서 함)
   getMusicXmlUrl(scoreId) {
     return `${API_BASE}/api/score/${scoreId}/musicxml`;
-  }
+  },
+
+  // === 악보 제목 수정 ===
+  async renameScore(scoreId, newTitle) {
+    const res = await fetch(`${API_BASE}/api/score/${scoreId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle }),
+    });
+    if (!res.ok) throw new Error('제목 수정 실패');
+    return await res.json();
+  },
 };
 
 

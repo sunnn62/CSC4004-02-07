@@ -423,6 +423,24 @@ async def list_scores():
 # ---------------------------------------------------------------------------
 # DELETE /api/score/{scoreId}  — 악보 삭제
 # ---------------------------------------------------------------------------
+class TitleUpdate(BaseModel):
+    title: str
+
+@app.patch("/api/score/{score_id}")
+async def update_score_title(score_id: str, update: TitleUpdate):
+    """악보 제목 수정"""
+    _assert_score_exists(score_id)
+    data_path = _get_data_path(score_id)
+    if not os.path.exists(data_path):
+        raise HTTPException(status_code=404, detail="Score data not found")
+    with open(data_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    data.setdefault("metadata", {})["title"] = update.title.strip()
+    with open(data_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return {"ok": True, "title": update.title.strip()}
+
+
 @app.delete("/api/score/{score_id}")
 async def delete_score(score_id: str):
     _assert_score_exists(score_id)
