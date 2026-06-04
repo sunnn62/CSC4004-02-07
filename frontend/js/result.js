@@ -273,6 +273,75 @@ function updateProfileStats() {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 }
 
+// ── 이미지 저장 (공유) ────────────────────────────────────
+document.getElementById('btn-share')?.addEventListener('click', saveAsImage);
+
+async function saveAsImage() {
+  if (!data) return;
+
+  const btn = document.getElementById('btn-share');
+  btn.textContent = '저장 중...';
+  btn.disabled = true;
+
+  // 캡처에서 숨길 UI 요소 (버튼류)
+  const hideEls = [
+    ...document.querySelectorAll('.close-btn, #btn-share, .action-buttons, .btn-retry, .ai-card'),
+  ];
+  hideEls.forEach(el => { el.dataset._vis = el.style.visibility; el.style.visibility = 'hidden'; });
+
+  try {
+    const target = document.querySelector('.result-screen');
+    const canvas = await html2canvas(target, {
+      scale: 2,               // 고해상도 (Retina 대응)
+      backgroundColor: '#F5F1E8',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+    });
+
+    // 파일명: 피아니_곡명_날짜.png
+    const safeName = (data.songTitle ?? '연주결과').replace(/[\\/:*?"<>|]/g, '');
+    const date = new Date().toLocaleDateString('ko-KR', {
+      year: '2-digit', month: '2-digit', day: '2-digit',
+    }).replace(/\.\s*/g, '').replace(/\.$/, '');
+    const filename = `피아니_${safeName}_${date}.png`;
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    showShareToast('이미지가 저장됐어요! 🖼️');
+  } catch (e) {
+    console.error('이미지 저장 실패:', e);
+    showShareToast('이미지 저장에 실패했어요.');
+  } finally {
+    hideEls.forEach(el => { el.style.visibility = el.dataset._vis ?? ''; delete el.dataset._vis; });
+    btn.textContent = '저장';
+    btn.disabled = false;
+  }
+}
+
+function showShareToast(msg) {
+  let toast = document.getElementById('share-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'share-toast';
+    toast.style.cssText = [
+      'position:fixed', 'bottom:24px', 'left:50%', 'transform:translateX(-50%)',
+      'background:#1A1A1A', 'color:#fff', 'padding:10px 20px',
+      'border-radius:100px', 'font-size:13px', 'font-weight:500',
+      'z-index:9999', 'white-space:nowrap', 'pointer-events:none',
+      'transition:opacity .3s',
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
 // ── 시작 ─────────────────────────────────────────────────
 render();
 updateProfileStats();

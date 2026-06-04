@@ -84,7 +84,47 @@ document.getElementById('start-btn').addEventListener('click', () => {
   window.location.href = `play.html?scoreId=${state.scoreId}`;
 });
 
-// ───── 10. 악보 미리보기 (OSMD) ─────
+// ───── 10. 제목 수정 ─────
+function openTitleEdit() {
+  const current = document.getElementById('song-title').textContent;
+  document.getElementById('title-input').value = current === '—' ? '' : current;
+  document.getElementById('title-row').style.display = 'none';
+  document.getElementById('title-edit-row').style.display = 'flex';
+  document.getElementById('title-input').focus();
+}
+
+function closeTitleEdit() {
+  document.getElementById('title-row').style.display = 'flex';
+  document.getElementById('title-edit-row').style.display = 'none';
+}
+
+async function saveTitleEdit() {
+  const newTitle = document.getElementById('title-input').value.trim();
+  if (!newTitle) return;
+  const btn = document.getElementById('title-save-btn');
+  btn.textContent = '저장 중...';
+  btn.disabled = true;
+  try {
+    await window.api.renameScore(scoreId, newTitle);
+    document.getElementById('song-title').textContent = newTitle;
+    closeTitleEdit();
+  } catch (e) {
+    alert('제목 수정에 실패했어요. 다시 시도해주세요.');
+  } finally {
+    btn.textContent = '저장';
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('title-edit-btn')?.addEventListener('click', openTitleEdit);
+document.getElementById('title-cancel-btn')?.addEventListener('click', closeTitleEdit);
+document.getElementById('title-save-btn')?.addEventListener('click', saveTitleEdit);
+document.getElementById('title-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveTitleEdit();
+  if (e.key === 'Escape') closeTitleEdit();
+});
+
+// ───── 12. 악보 미리보기 (OSMD) ─────
 let previewOsmd = null;
 
 async function renderPreview(scoreId) {

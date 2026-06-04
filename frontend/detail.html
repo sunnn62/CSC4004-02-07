@@ -17,7 +17,15 @@
 
       <!-- 곡 헤더 -->
       <header class="detail-header">
-        <h1 class="song-title" id="song-title">—</h1>
+        <div class="title-row">
+          <h1 class="song-title" id="song-title">—</h1>
+          <button class="title-edit-btn" id="title-edit-btn" title="제목 수정">✏️</button>
+        </div>
+        <div class="title-edit-row" id="title-edit-row" style="display:none;">
+          <input class="title-input" id="title-input" type="text" maxlength="60" placeholder="악보 제목 입력">
+          <button class="title-save-btn" id="title-save-btn">저장</button>
+          <button class="title-cancel-btn" id="title-cancel-btn">취소</button>
+        </div>
         <div class="song-composer" id="song-composer">—</div>
       </header>
 
@@ -94,9 +102,6 @@
     import { renderSidebar } from './js/sidebar.js';
     renderSidebar('practice', document.getElementById('sidebar'));
   </script>
-  
-  <script src="js/api.js"></script>
-  <script src="js/detail.js"></script>
   
   <script src="https://unpkg.com/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
   <script src="js/api.js"></script>
