@@ -16,7 +16,7 @@
 
 html, body {
   height: 100%;
-  font-family: 'Noto Serif KR', -apple-system, sans-serif;
+  font-family: 'Pretendard', -apple-system, sans-serif;
   background: var(--bg-main);
   color: var(--text-primary);
   overflow: hidden;

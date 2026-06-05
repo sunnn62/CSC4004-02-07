@@ -16,7 +16,7 @@
 
 html, body {
   height: 100%;
-  font-family: 'Noto Serif KR', -apple-system, sans-serif;
+  font-family: 'Pretendard', -apple-system, sans-serif;
   background: var(--bg-main);
   color: var(--text-primary);
   overflow: hidden;
@@ -74,25 +74,27 @@ button { font-family: inherit; cursor: pointer; }
 .song-meta {
   font-size: 12px; color: var(--text-secondary);
 }
-
-/* MIDI 상태 표시 박스 */
-.midi-status {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 14px;
-  background: var(--bg-main);
+/* MIDI 재연결 버튼 */
+.midi-reconnect-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border: none;
   border-radius: 100px;
-  font-size: 12px; font-weight: 500;
-  flex-wrap: nowrap;
+  font-size: 12px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, color .15s;
   white-space: nowrap;
+  /* 기본: 연결 안 됨 (회색) */
+  background: var(--bg-main);
+  color: var(--text-secondary);
 }
-
 
 .midi-status .status-dot {
   width: 8px; height: 8px;
   background: var(--text-secondary);
   border-radius: 50%;
   transition: background 0.2s ease;
-  flex-shrink: 0;
 }
 .midi-status[data-state="connected"] .status-dot {
   background: var(--accent-green);
@@ -118,7 +120,6 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
-  flex-shrink: 0;
 }
 .midi-refresh-btn:hover {
   background: rgba(0,0,0,0.08);
@@ -132,6 +133,18 @@ button { font-family: inherit; cursor: pointer; }
   to { transform: rotate(360deg); }
 }
 
+/* 연결 완료 */
+.midi-reconnect-btn.connected {
+  background: rgba(45,110,78,0.12);
+  color: var(--note-correct);
+}
+.midi-reconnect-btn.connected:hover { background: rgba(45,110,78,0.18); }
+/* 오류 */
+.midi-reconnect-btn.error {
+  background: rgba(214,69,69,0.1);
+  color: var(--note-wrong);
+}
+.midi-reconnect-btn.error:hover { background: rgba(214,69,69,0.16); }
 .timer {
   font-size: 14px; font-weight: 600;
   font-variant-numeric: tabular-nums;

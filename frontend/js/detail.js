@@ -138,7 +138,10 @@ async function renderPreview(scoreId) {
   }
 
   try {
-    const xmlUrl = window.api.getMusicXmlUrl(scoreId);
+    // TODO: 백엔드 연결 시 교체
+    //   const xmlUrl = `http://localhost:8000/api/score/${scoreId}/musicxml`;
+    const xmlUrl = 'assets/canon.mxl';  // mock
+
     previewOsmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
       autoResize: true,
       drawTitle: false,
