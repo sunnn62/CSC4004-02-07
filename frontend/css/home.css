@@ -227,6 +227,28 @@ body {
 }
 .add-score-btn:hover { opacity: 0.85; }
 
+.edit-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.edit-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.edit-btn.active {
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+  border-color: var(--text-primary);
+}
+
 .scores-list {
   display: flex;
   flex-direction: column;
@@ -285,10 +307,38 @@ body {
   line-height: 1;
   flex-shrink: 0;
 }
-.score-card:hover .score-delete-btn {
-  display: flex;
-}
 .score-delete-btn:hover {
   background: #ff4d4d;
   color: #fff;
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+  display: none;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* 편집 모드 */
+.scores-list.edit-mode .score-card {
+  cursor: grab;
+}
+.scores-list.edit-mode .score-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+.scores-list.edit-mode .drag-handle,
+.scores-list.edit-mode .score-delete-btn {
+  display: flex;
+}
+.scores-list.edit-mode .score-card-inner {
+  pointer-events: none;
+}
+.scores-list.edit-mode .score-card.dragging {
+  opacity: 0.4;
 }
