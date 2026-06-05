@@ -2,6 +2,7 @@ const API_BASE = "http://localhost:8001";
 
 let cachedScores = [];
 let isEditMode = false;
+let searchQuery = '';
 
 // ───── localStorage 순서 관리 ─────
 function getSavedOrder() {
@@ -16,11 +17,9 @@ function applyOrder(scores) {
   if (order.length === 0) return scores;
   const byId = new Map(scores.map(s => [s.scoreId, s]));
   const ordered = [];
-  // 저장된 순서대로 먼저
   for (const id of order) {
     if (byId.has(id)) { ordered.push(byId.get(id)); byId.delete(id); }
   }
-  // 새로 추가된 악보(저장 순서에 없는 것)는 뒤에
   for (const s of byId.values()) ordered.push(s);
   return ordered;
 }
@@ -50,7 +49,20 @@ function renderScores() {
     return;
   }
 
-  list.innerHTML = cachedScores.map(s => {
+  // 검색 필터링
+  const q = searchQuery.toLowerCase();
+  const filtered = q
+    ? cachedScores.filter(s => (s.title || '').toLowerCase().includes(q))
+    : cachedScores;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<p style="color:#999;font-size:13px;">"${searchQuery}" 검색 결과가 없어요.</p>`;
+    // 메시지 띄울 때도 상태 클래스는 반영
+    list.classList.toggle('searching', !!searchQuery);
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => {
     const meta = [
       s.tempo && `♩=${Math.round(s.tempo)}`,
       s.timeSignature
@@ -67,9 +79,13 @@ function renderScores() {
     `;
   }).join('');
 
-  // 편집 모드 상태 다시 반영 (재렌더 후)
+  // 편집 모드 + 검색 상태 반영
   list.classList.toggle('edit-mode', isEditMode);
-  list.querySelectorAll('.score-card').forEach(c => c.draggable = isEditMode);
+  list.classList.toggle('searching', !!searchQuery);
+  // 드래그는 편집모드 AND 검색 안 중일 때만
+  list.querySelectorAll('.score-card').forEach(c => {
+    c.draggable = isEditMode && !searchQuery;
+  });
 
   // 삭제 버튼
   list.querySelectorAll('.score-delete-btn').forEach(btn => {
@@ -88,6 +104,12 @@ function renderScores() {
   attachDragHandlers();
 }
 
+// ───── 검색 input ─────
+document.getElementById('scores-search-input')?.addEventListener('input', (e) => {
+  searchQuery = e.target.value.trim();
+  renderScores();
+});
+
 // ───── 편집 모드 토글 ─────
 function setEditMode(on) {
   isEditMode = on;
@@ -95,7 +117,9 @@ function setEditMode(on) {
   const btn = document.getElementById('edit-btn');
   if (list) {
     list.classList.toggle('edit-mode', on);
-    list.querySelectorAll('.score-card').forEach(c => c.draggable = on);
+    list.querySelectorAll('.score-card').forEach(c => {
+      c.draggable = on && !searchQuery;
+    });
   }
   if (btn) {
     btn.classList.toggle('active', on);
@@ -112,7 +136,7 @@ function attachDragHandlers() {
 
   list.querySelectorAll('.score-card').forEach(card => {
     card.addEventListener('dragstart', (e) => {
-      if (!isEditMode) { e.preventDefault(); return; }
+      if (!isEditMode || searchQuery) { e.preventDefault(); return; }
       draggingEl = card;
       card.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
@@ -146,10 +170,50 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
 }
 
-fetchScores();
+// ───── 최근 연주곡 카드 (piano_history 기반) ─────
+function renderContinueCard() {
+  const card = document.getElementById('continue-card');
+  if (!card) return;
 
-// ───── 이어서 연주 버튼 ─────
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem('piano_history') || '[]'); }
+  catch {}
+
+  if (history.length === 0) {
+    card.style.display = 'none';
+    return;
+  }
+
+  card.style.display = '';
+  const last = history[0];
+
+  // 날짜
+  const lastDate = last.date ? new Date(last.date) : null;
+  const dateStr = lastDate
+    ? `${lastDate.getMonth() + 1}월 ${lastDate.getDate()}일`
+    : '';
+
+  // 점수 (0~100)
+  const score = Math.max(0, Math.min(100, last.score ?? 0));
+
+  document.getElementById('continue-title').textContent = last.songTitle ?? '알 수 없는 곡';
+  document.getElementById('continue-meta').textContent = dateStr;
+  document.getElementById('continue-progress-fill').style.width = `${score}%`;
+  document.getElementById('continue-progress-text').textContent = `${score}점`;
+
+  // "다시 연주" 버튼이 가져갈 scoreId
+  card.dataset.scoreId = last.scoreId ?? '';
+}
+
+// ───── 다시 연주 버튼 → 디테일 화면으로 ─────
 document.getElementById('resume-btn')?.addEventListener('click', () => {
-  const last = localStorage.getItem('lastScoreId');
-  if (last) window.location.href = `play.html?scoreId=${last}`;
+  const card = document.getElementById('continue-card');
+  const id = card?.dataset.scoreId;
+  if (id && id !== 'unknown') {
+    window.location.href = `detail.html?scoreId=${id}`;
+  }
 });
+
+// ───── 부트 ─────
+fetchScores();
+renderContinueCard();
