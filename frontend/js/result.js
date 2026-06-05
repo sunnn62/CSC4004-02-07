@@ -200,8 +200,11 @@ async function loadAnalysis() {
 
 // ── 프로필 통계 업데이트 ──────────────────────────────────
 function updateProfileStats() {
-  if (!data || sessionStorage.getItem('practiceResultSaved')) return;
-  sessionStorage.setItem('practiceResultSaved', '1');
+  if (!data) return;
+  const fingerprint = `${data.scoreId}_${data.totalNotes}_${data.correctNotes}_${data.elapsedSec}`;
+  const flagKey = `practiceResultSaved_${fingerprint}`;
+  if (sessionStorage.getItem(flagKey)) return;
+  sessionStorage.setItem(flagKey, '1');
 
   const pitchAcc  = data.totalNotes
     ? Math.round(data.correctNotes / data.totalNotes * 100) : 0;

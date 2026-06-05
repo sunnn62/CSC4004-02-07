@@ -48,6 +48,20 @@ async function fetchScores() {
 
 fetchScores();
 
+// ───── 이번 주 연주 시간 ─────
+(function renderWeeklyTime() {
+  const history = JSON.parse(localStorage.getItem('piano_history') || '[]');
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const totalSec = history
+    .filter(e => new Date(e.date).getTime() >= weekAgo)
+    .reduce((sum, e) => sum + (e.elapsedSec ?? 0), 0);
+
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const el = document.getElementById('weekly-time');
+  if (el) el.textContent = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+})();
+
 // ───── 이어서 연주 버튼 ─────
 document.getElementById('resume-btn')?.addEventListener('click', () => {
   const last = localStorage.getItem('lastScoreId');
