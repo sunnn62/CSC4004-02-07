@@ -2,8 +2,8 @@
 // 업로드 로직 — index.html의 method-card 구조에 맞춤
 //
 // 구조:
-//   .method-card[data-method=camera|library|pdf]  ← 클릭하면
-//   #file-camera / #file-library / #file-pdf       ← 해당 input 열림
+//   .method-card[data-method=library|pdf|musicxml]  ← 클릭하면
+//   #file-library / #file-pdf / #file-musicxml      ← 해당 input 열림
 //   파일 선택되면 → 자동으로 업로드 시작 → 폴링 → play.html 이동
 // ============================================================
 
@@ -52,9 +52,9 @@ async function handleFile(file) {
     showStatus("loading", "악보 분석 중... (수십 초 걸릴 수 있어요)");
     await waitUntilDone(scoreId);
 
-    showStatus("success", "✅ 분석 완료! 연주 화면으로 이동합니다.");
+    showStatus("success", "분석 완료!");
     setTimeout(() => {
-      window.location.href = `play.html?scoreId=${scoreId}`;
+      window.location.href = `detail.html?scoreId=${scoreId}`;
     }, 800);
   } catch (err) {
     showStatus("error", "❌ " + err.message);
