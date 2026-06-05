@@ -123,7 +123,7 @@ document.getElementById('btn-replay').addEventListener('click', () => {
   location.href = scoreId ? `play.html?scoreId=${scoreId}` : 'play.html';
 });
 document.getElementById('btn-home').addEventListener('click', () => {
-  location.href = 'home.html';
+  location.href = 'index.html';
 });
 
 // ── AI 분석 ──────────────────────────────────────────────
