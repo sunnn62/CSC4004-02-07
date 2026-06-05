@@ -18,7 +18,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Noto Serif KR', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-main);
   color: var(--text-primary);
   font-size: 14px;
@@ -214,13 +214,7 @@ body {
   align-items: center;
   gap: 14px;
 }
-.see-all {
-  font-size: 13px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.see-all:hover { color: var(--text-primary); }
+
 .add-score-btn {
   background: var(--text-primary);
   color: var(--text-on-dark);
@@ -233,77 +227,148 @@ body {
 }
 .add-score-btn:hover { opacity: 0.85; }
 
-.scores-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
+.edit-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
+.edit-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.edit-btn.active {
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+  border-color: var(--text-primary);
+}
+
+.scores-search {
+  margin-bottom: 10px;
+}
+.scores-search input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.scores-search input::placeholder {
+  color: var(--text-tertiary);
+}
+.scores-search input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.scores-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .score-card {
   background: var(--bg-card);
   border-radius: var(--radius-md);
-  padding: 12px;
-  color: inherit;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   transition: transform 0.15s, box-shadow 0.15s;
-  display: block;
-  position: relative;
 }
 .score-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
+
 .score-card-inner {
   text-decoration: none;
   color: inherit;
+  flex: 1;
   display: block;
+  min-width: 0;
 }
-.score-delete-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(0,0,0,0.08);
-  border: none;
-  border-radius: 50%;
-  width: 22px;
-  height: 22px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.score-card:hover .score-delete-btn {
-  display: flex;
-}
-.score-delete-btn:hover {
-  background: #ff4d4d;
-  color: #fff;
-}
-.score-thumb {
-  aspect-ratio: 4 / 3;
-  background: var(--bg-active);
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
-  overflow: hidden;
-}
-.score-thumb svg {
-  width: 55%;
-  height: 55%;
-  opacity: 0.5;
-}
+
 .score-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 2px;
 }
+
 .score-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-secondary);
+}
+
+.score-delete-btn {
+  background: rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.score-delete-btn:hover {
+  background: #ff4d4d;
+  color: #fff;
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+  display: none;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* 편집 모드 */
+.scores-list.edit-mode .score-card {
+  cursor: grab;
+}
+.scores-list.edit-mode .score-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+.scores-list.edit-mode .drag-handle,
+.scores-list.edit-mode .score-delete-btn {
+  display: flex;
+}
+.scores-list.edit-mode .score-card-inner {
+  pointer-events: none;
+}
+.scores-list.edit-mode .score-card.dragging {
+  opacity: 0.4;
+}
+
+/* 검색 중에는 드래그 비활성 (편집 모드여도) */
+.scores-list.searching .drag-handle {
+  display: none !important;
+}
+.scores-list.searching .score-card {
+  cursor: default;
 }
