@@ -39,18 +39,18 @@
         </div>
       </header>
 
-      <!-- 이어서 연습 카드 -->
-      <section class="continue-card" id="continue-card">
-        <div class="continue-label">이어서 연습</div>
-        <h2 class="continue-title">고요한 밤 거룩한 밤</h2>
-        <div class="continue-meta">F. Gruber · 양손 · ♩=76</div>
+      <!-- 최근 연주 카드 (piano_history 기반) -->
+      <section class="continue-card" id="continue-card" style="display:none;">
+        <div class="continue-label">최근 연주</div>
+        <h2 class="continue-title" id="continue-title">—</h2>
+        <div class="continue-meta" id="continue-meta">—</div>
         <div class="continue-bottom">
           <div class="progress-wrap">
-            <div class="progress-bar"><div class="progress-fill" style="width: 68%"></div></div>
-            <span class="progress-text">68%</span>
+            <div class="progress-bar"><div class="progress-fill" id="continue-progress-fill" style="width: 0%"></div></div>
+            <span class="progress-text" id="continue-progress-text">0점</span>
           </div>
           <button class="resume-btn" id="resume-btn">
-            <span class="play-icon">▶</span> 이어서 연주
+            <span class="play-icon">▶</span> 다시 연주
           </button>
         </div>
       </section>
@@ -60,8 +60,13 @@
         <div class="scores-header">
           <h3 class="scores-title">내 악보</h3>
           <div class="scores-actions">
+            <button class="edit-btn" id="edit-btn" type="button">편집</button>
             <a href="index.html" class="add-score-btn">+ 새 악보</a>
           </div>
+        </div>
+
+        <div class="scores-search">
+          <input type="search" id="scores-search-input" placeholder="악보 이름 검색..." autocomplete="off">
         </div>
 
         <div class="scores-list" id="scores-list">

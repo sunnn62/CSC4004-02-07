@@ -225,13 +225,59 @@ body {
   text-decoration: none;
   transition: opacity 0.15s;
 }
+
 .add-score-btn:hover { opacity: 0.85; }
+
+.edit-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.edit-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.edit-btn.active {
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+  border-color: var(--text-primary);
+}
+
+.scores-search {
+  margin-bottom: 10px;
+}
+.scores-search input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.scores-search input::placeholder {
+  color: var(--text-tertiary);
+}
+.scores-search input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+}
 
 .scores-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
+
 
 .score-card {
   background: var(--bg-card);
@@ -284,11 +330,48 @@ body {
   justify-content: center;
   line-height: 1;
   flex-shrink: 0;
-}
-.score-card:hover .score-delete-btn {
-  display: flex;
+
 }
 .score-delete-btn:hover {
   background: #ff4d4d;
   color: #fff;
+}
+
+/* 드래그 핸들 */
+.drag-handle {
+  display: none;
+  color: var(--text-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* 편집 모드 */
+.scores-list.edit-mode .score-card {
+  cursor: grab;
+}
+.scores-list.edit-mode .score-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+.scores-list.edit-mode .drag-handle,
+.scores-list.edit-mode .score-delete-btn {
+  display: flex;
+}
+.scores-list.edit-mode .score-card-inner {
+  pointer-events: none;
+}
+.scores-list.edit-mode .score-card.dragging {
+  opacity: 0.4;
+}
+
+/* 검색 중에는 드래그 비활성 (편집 모드여도) */
+.scores-list.searching .drag-handle {
+  display: none !important;
+}
+.scores-list.searching .score-card {
+  cursor: default;
 }
