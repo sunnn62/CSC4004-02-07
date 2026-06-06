@@ -278,6 +278,7 @@ body {
   gap: 8px;
 }
 
+
 .score-card {
   background: var(--bg-card);
   border-radius: var(--radius-md);
@@ -329,6 +330,7 @@ body {
   justify-content: center;
   line-height: 1;
   flex-shrink: 0;
+
 }
 .score-delete-btn:hover {
   background: #ff4d4d;
