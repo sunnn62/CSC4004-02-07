@@ -1,5 +1,5 @@
 // ============================================================
-// 업로드 로직 — index.html의 method-card 구조에 맞춤
+// 업로드 로직 — upload.html의 method-card 구조에 맞춤
 //
 // 구조:
 //   .method-card[data-method=camera|library|pdf]  ← 클릭하면
