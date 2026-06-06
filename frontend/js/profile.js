@@ -3,10 +3,30 @@ const STATS_KEY   = 'piano_stats';
 
 function loadProfile() {
   const raw = localStorage.getItem(STORAGE_KEY);
-  if (raw) return JSON.parse(raw);
-  const defaults = { nickname: '에지', joinDate: new Date().toISOString() };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(defaults));
-  return defaults;
+  const profile = raw ? JSON.parse(raw) : { nickname: '에지', joinDate: new Date().toISOString() };
+
+  // piano_history 또는 streak 기준으로 joinDate를 더 오래된 날짜로 보정
+  const history = JSON.parse(localStorage.getItem('piano_history') || '[]');
+  if (history.length > 0) {
+    const earliest = history.reduce((a, b) =>
+      new Date(a.date) < new Date(b.date) ? a : b
+    );
+    if (new Date(earliest.date) < new Date(profile.joinDate)) {
+      profile.joinDate = earliest.date;
+    }
+  }
+  const stats = JSON.parse(localStorage.getItem(STATS_KEY) || '{}');
+  const streak = stats.streak ?? 0;
+  if (streak > 0) {
+    const streakStart = new Date(Date.now() - (streak - 1) * 86400000);
+    streakStart.setHours(0, 0, 0, 0);
+    if (streakStart < new Date(profile.joinDate)) {
+      profile.joinDate = streakStart.toISOString();
+    }
+  }
+
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  return profile;
 }
 
 function saveProfile(data) {
