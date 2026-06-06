@@ -492,7 +492,7 @@ document.getElementById('btn-metronome')?.addEventListener('click', () => {
   metronome.toggle();
 });
 
-function setupMetronome() {
+function setupMetronome(scoreJson = null) {
   const settings = JSON.parse(sessionStorage.getItem('playSettings') || '{}');
   const speed = settings.speedMultiplier ?? 1.0;
 
@@ -501,7 +501,10 @@ function setupMetronome() {
   let denominator = 4;
 
   try {
-    baseTempo = osmd.Sheet?.DefaultStartTempoInBpm || 120;
+    // 채점(noteComparator)은 scoreJson.metadata.tempo로 박자를 판정한다.
+    // 메트로놈도 같은 tempo를 써야 "메트로놈에 맞춰 쳤는데 slow/fast" 편향이 안 생긴다.
+    // (Audiveris MusicXML에 tempo가 없으면 OSMD가 기본값으로 fallback해 어긋날 수 있음)
+    baseTempo = scoreJson?.metadata?.tempo || osmd.Sheet?.DefaultStartTempoInBpm || 120;
     const ts = osmd.Sheet?.SourceMeasures?.[0]?.ActiveTimeSignature;
     if (ts) {
       numerator = ts.Numerator ?? ts.numerator ?? 4;
@@ -615,8 +618,6 @@ async function bootstrap() {
     }
   }
 
-  setupMetronome();
-
   let scoreJson = null;
   try {
     if (useBackend) {
@@ -625,6 +626,9 @@ async function bootstrap() {
   } catch (e) {
     console.warn("scoreJson 못 받음:", e);
   }
+
+  // scoreJson을 받은 뒤에 메트로놈을 설정해야 채점과 동일한 tempo를 쓸 수 있다.
+  setupMetronome(scoreJson);
 
   if (scoreJson) {
     setupComparator(scoreJson);
