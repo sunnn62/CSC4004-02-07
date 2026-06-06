@@ -250,6 +250,28 @@ body {
   border-color: var(--text-primary);
 }
 
+.scores-search {
+  margin-bottom: 10px;
+}
+.scores-search input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.scores-search input::placeholder {
+  color: var(--text-tertiary);
+}
+.scores-search input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
 .scores-list {
   display: flex;
   flex-direction: column;
@@ -342,4 +364,12 @@ body {
 }
 .scores-list.edit-mode .score-card.dragging {
   opacity: 0.4;
+}
+
+/* 검색 중에는 드래그 비활성 (편집 모드여도) */
+.scores-list.searching .drag-handle {
+  display: none !important;
+}
+.scores-list.searching .score-card {
+  cursor: default;
 }
