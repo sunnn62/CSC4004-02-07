@@ -16,7 +16,7 @@
 
 html, body {
   height: 100%;
-  font-family: 'Pretendard', -apple-system, sans-serif;
+  font-family: 'Noto Serif KR', -apple-system, sans-serif;
   background: var(--bg-main);
   color: var(--text-primary);
   overflow: hidden;
@@ -74,7 +74,19 @@ button { font-family: inherit; cursor: pointer; }
 .song-meta {
   font-size: 12px; color: var(--text-secondary);
 }
-/* MIDI 재연결 버튼 */
+
+/* MIDI 상태 표시 박스 */
+.midi-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-main);
+  border-radius: 100px;
+  font-size: 12px; font-weight: 500;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* MIDI 재연결 버튼 (legacy — 현재 HTML에서 미사용) */
 .midi-reconnect-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 7px 14px;
@@ -95,6 +107,7 @@ button { font-family: inherit; cursor: pointer; }
   background: var(--text-secondary);
   border-radius: 50%;
   transition: background 0.2s ease;
+  flex-shrink: 0;
 }
 .midi-status[data-state="connected"] .status-dot {
   background: var(--accent-green);
@@ -120,7 +133,9 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
 }
+
 .midi-refresh-btn:hover {
   background: rgba(0,0,0,0.08);
   color: var(--text-primary);
