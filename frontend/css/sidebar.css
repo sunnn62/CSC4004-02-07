@@ -35,17 +35,3 @@
 .nav-item:hover { background: var(--bg-hover); }
 .nav-item.active { background: var(--bg-active); font-weight: 600; }
 .nav-icon { width: 20px; text-align: center; font-size: 14px; }
-
-.device-status {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px;
-  background: rgba(0,0,0,0.03);
-  border-radius: var(--radius-md);
-}
-.status-dot {
-  width: 8px; height: 8px;
-  background: var(--accent-green);
-  border-radius: 50%; flex-shrink: 0;
-}
-.status-label { font-size: 11px; color: var(--text-secondary); }
-.status-detail { font-size: 13px; font-weight: 600; }
