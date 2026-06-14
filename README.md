@@ -37,7 +37,7 @@
 - FastAPI (Python)
 - music21 — MusicXML 파싱
 - Oemer — 이미지(PNG/JPG) 악보 OMR 인식
-- Audiveris — PDF 악보 OMR 인식 (Oemer 폴백)
+- Audiveris — PDF 악보 OMR 인식
 - Groq API (LLaMA 3.1) — AI 연주 분석
 
 ---
@@ -47,17 +47,21 @@
 ### 1. 백엔드
 
 ```bash
-# 패키지 설치
-pip install -r requirements.txt
-
-# .env 파일 생성
-echo "GROQ_API_KEY=your_api_key_here" > .env
-
-# 서버 실행
-uvicorn backend.main:app --reload --port 8001
+pip install -r backend/requirements.txt
+pip install -r sheet_parser/requirements.txt
 ```
 
-Groq API 키 발급: https://console.groq.com (무료)
+`.env` 파일을 프로젝트 루트에 생성:
+
+```
+GROQ_API_KEY=your_api_key_here
+```
+
+> Groq API 키 발급: https://console.groq.com (무료)
+
+```bash
+uvicorn backend.main:app --reload --port 8001
+```
 
 ### 2. 프론트엔드
 
@@ -72,15 +76,12 @@ python -m http.server 5500
 
 > ⚠️ ES 모듈 사용으로 `file://` 직접 열기 불가 — 반드시 로컬 서버 필요
 
-### 3. OMR 엔진 (선택)
+### 3. OMR 엔진 (이미지 / PDF 업로드 시 필요)
 
-이미지 / PDF 업로드를 사용하려면 추가 설치가 필요합니다.
+- **Oemer** (이미지): `pip install oemer`
+- **Audiveris** (PDF): [설치 가이드](https://github.com/Audiveris/audiveris) → 설치 후 `AUDIVERIS_PATH` 환경변수 설정
 
-- **Oemer** (이미지 인식): `pip install oemer`
-- **Audiveris** (PDF 인식): [설치 가이드](https://github.com/Audiveris/audiveris)  
-  설치 후 `AUDIVERIS_PATH` 환경변수 설정
-
-MusicXML 업로드만 사용하는 경우 OMR 엔진 설치는 불필요합니다.
+MusicXML만 사용하는 경우 OMR 엔진 설치 불필요
 
 ---
 
@@ -89,20 +90,27 @@ MusicXML 업로드만 사용하는 경우 OMR 엔진 설치는 불필요합니�
 ```
 CSC4004-02-07/
 ├── backend/
-│   └── main.py                  # FastAPI 서버
+│   ├── main.py                  # FastAPI 서버
+│   └── requirements.txt
 ├── sheet_parser/
-│   └── score_pipeline.py        # 악보 파싱 파이프라인 (OMR + music21)
-├── frontend/
-│   ├── home.html                # 홈 (악보 목록)
-│   ├── upload.html              # 악보 업로드
-│   ├── detail.html              # 악보 상세 / 연주 설정
-│   ├── play.html                # 실시간 연주
-│   ├── result.html              # 연주 결과 + AI 분석
-│   ├── profile.html             # 프로필 + 통계
-│   ├── score-history.html       # 연주 기록 목록
-│   └── session-detail.html      # 연주 기록 상세
-├── requirements.txt
-└── Procfile
+│   ├── score_pipeline.py        # 악보 파싱 파이프라인 (OMR + music21)
+│   ├── score_api.py
+│   └── requirements.txt
+└── frontend/
+    ├── home.html                # 홈 (악보 목록)
+    ├── upload.html              # 악보 업로드
+    ├── detail.html              # 악보 상세 / 연주 설정
+    ├── play.html                # 실시간 연주
+    ├── result.html              # 연주 결과 + AI 분석
+    ├── profile.html             # 프로필 + 통계
+    ├── score-history.html       # 연주 기록 목록
+    ├── session-detail.html      # 연주 기록 상세
+    ├── css/
+    └── js/
+        ├── api.js               # 백엔드 통신
+        ├── osmd-render.js       # OSMD 렌더링 + 연주 판정
+        ├── simulation.js        # 시뮬레이션 모드
+        └── d/                   # MIDI 비교 엔진
 ```
 
 ---
@@ -111,8 +119,8 @@ CSC4004-02-07/
 
 | 형식 | 확장자 | 비고 |
 |------|--------|------|
-| 이미지 | `.png` `.jpg` `.jpeg` | Oemer OMR 필요 |
-| PDF | `.pdf` | Audiveris OMR 필요 |
+| 이미지 | `.png` `.jpg` `.jpeg` | Oemer 필요 |
+| PDF | `.pdf` | Audiveris 필요 |
 | MusicXML | `.xml` `.musicxml` `.mxl` | 추가 설치 불필요 |
 
 ---
