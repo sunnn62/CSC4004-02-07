@@ -20,15 +20,11 @@
 
 | 홈 화면 | 악보 업로드 |
 |---|---|
-| ![홈 화면](<img width="1916" height="902" alt="홈화면" src="https://github.com/user-attachments/assets/08ffdb50-9c74-4bad-840d-960c76524fde" />
-) | ![업로드 화면](<img width="1912" height="907" alt="악보 파싱" src="https://github.com/user-attachments/assets/cf25ed1c-990b-470c-86a7-8155fe859181" />
-) |
+| ![홈 화면](<img width="1916" height="902" alt="홈화면" src="https://github.com/user-attachments/assets/08ffdb50-9c74-4bad-840d-960c76524fde" />) | ![업로드 화면](<img width="1912" height="907" alt="악보 파싱"src="https://github.com/user-attachments/assets/cf25ed1c-990b-470c-86a7-8155fe859181" />) |
 
 | 연주 화면 | 결과 화면 |
 |---|---|
-| ![연주 화면](<img width="1917" height="907" alt="연주화면" src="https://github.com/user-attachments/assets/8704927b-f57d-47b5-8b78-daa35dd65ef2" />
-) | ![결과 화면](<img width="1871" height="822" alt="KakaoTalk_20260602_173651464" src="https://github.com/user-attachments/assets/58889bb7-7205-4458-bd3f-faeaef7156c0" />
-) |
+| ![연주 화면](<img width="1917" height="907" alt="연주화면" src="https://github.com/user-attachments/assets/8704927b-f57d-47b5-8b78-daa35dd65ef2" />) | ![결과 화면](<img width="1871" height="822" alt="KakaoTalk_20260602_173651464" src="https://github.com/user-attachments/assets/58889bb7-7205-4458-bd3f-faeaef7156c0" />) |
 ---
 ## 기술 스택
 
