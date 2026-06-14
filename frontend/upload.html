@@ -32,19 +32,24 @@
 
       <div class="content">
         <h1 class="title">연주할 악보를 가져와 주세요</h1>
-        <p class="subtitle">이미지나 PDF를 인식해서 음표를 자동으로 분석해 드려요.</p>
+        <p class="subtitle">MusicXML 형식으로 업로드하면 음표를 자동으로 분석해 드려요.</p>
+
+        <div class="upload-notice">
+          현재 버전에서는 MusicXML(.xml) 형식만 지원합니다.<br>
+          MuseScore 등에서 MusicXML로 내보내기 후 업로드해 주세요.
+        </div>
 
         <div class="method-grid">
-          <button class="method-card" data-method="library">
+          <button class="method-card disabled" data-method="library" disabled>
             <div class="method-icon">🖼️</div>
             <div class="method-label">사진 라이브러리</div>
-            <div class="method-hint">갤러리에서 사진을 선택해요</div>
+            <div class="method-hint">현재 미지원</div>
           </button>
 
-          <button class="method-card" data-method="pdf">
+          <button class="method-card disabled" data-method="pdf" disabled>
             <div class="method-icon">📄</div>
             <div class="method-label">PDF 파일</div>
-            <div class="method-hint">파일에서 PDF를 불러와요</div>
+            <div class="method-hint">현재 미지원</div>
           </button>
 
           <button class="method-card" data-method="musicxml">
