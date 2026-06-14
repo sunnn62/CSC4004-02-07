@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F5F1E8">
+  <title>피아니 - 프로필</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/profile.css">
+</head>
+<body>
+  <div class="layout">
+    <aside id="sidebar"></aside>
+
+    <main class="main">
+      <header class="page-header">
+        <button class="back-btn" onclick="history.back()">‹</button>
+        <h2 class="page-title">프로필</h2>
+        <div></div>
+      </header>
+
+      <!-- 프로필 히어로 -->
+      <section class="profile-hero">
+        <div class="avatar" id="avatar-circle">
+          <input type="file" id="avatar-input" accept="image/*" style="display:none">
+        </div>
+        <div class="profile-info">
+          <div class="nickname-row">
+            <span class="nickname" id="nickname-display">에지</span>
+            <button class="edit-btn" id="edit-btn">편집</button>
+          </div>
+          <div class="nickname-edit" id="nickname-edit" style="display:none;">
+            <input class="nickname-input" id="nickname-input" type="text" maxlength="12" placeholder="닉네임 입력">
+            <button class="save-btn" id="save-btn">저장</button>
+          </div>
+          <div class="join-date" id="join-date">—</div>
+          <div class="level-badge" id="level-badge">입문자</div>
+        </div>
+      </section>
+
+      <!-- 연속 연습 스트릭 -->
+      <div class="streak-card">
+        <div class="streak-left">
+          <div class="streak-count" id="streak-count">0일</div>
+          <div class="streak-label">연속 연습 중</div>
+        </div>
+        <div class="streak-best">
+          <strong id="streak-best">0일</strong>
+          최고 기록
+        </div>
+      </div>
+
+      <!-- 통계 그리드 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="total-time">0분</div>
+          <div class="stat-label">총 연주 시간</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="days-since">0일</div>
+          <div class="stat-label">시작한 지</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="total-songs">0곡</div>
+          <div class="stat-label">완료한 곡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="avg-accuracy">—</div>
+          <div class="stat-label">평균 정확도</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { renderSidebar } from './js/sidebar.js';
+    renderSidebar('profile', document.getElementById('sidebar'));
+  </script>
+  <script src="js/profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>피아니 - 연습 결과</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/result.css">
+</head>
+<body>
+  <!-- 세로 모드 안내 -->
+  <div class="rotate-overlay">
+    <div class="rotate-icon">⟳</div>
+    <p>화면을 가로로 돌려주세요</p>
+  </div>
+
+  <div class="result-screen">
+    <header class="result-header">
+      <button class="close-btn" onclick="location.href='home.html'">×</button>
+      <h2 class="header-title">연습 결과</h2>
+      <button class="share-btn" id="btn-share">공유</button>
+    </header>
+
+    <main class="result-body">
+      <!-- 좌측: 점수 + 통계 + 버튼 -->
+      <aside class="summary-panel">
+        <div class="song-name" id="song-name">로딩 중...</div>
+
+        <div class="big-score">
+          <span class="score-num" id="score-num">--</span>
+          <span class="score-total">/100</span>
+        </div>
+
+        <div class="score-trend" id="score-trend">계산 중...</div>
+
+        <div class="stat-cards">
+          <!-- ① 음정 정확도 -->
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <span class="stat-label">음정 정확도</span>
+              <span class="stat-sub" id="pitch-count"></span>
+            </div>
+            <span class="stat-value" id="accuracy">--<small>%</small></span>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill pitch-fill" id="pitch-bar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- ② 박자 정확도 -->
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <span class="stat-label">박자 정확도</span>
+              <span class="stat-sub" id="timing-count"></span>
+            </div>
+            <span class="stat-value" id="timing-accuracy">--<small>%</small></span>
+            <div class="stat-bar-track">
+              <div class="stat-bar-fill timing-fill" id="timing-bar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- ③ 연주 시간 -->
+          <div class="stat-card">
+            <div class="stat-card-top">
+              <span class="stat-label">연주 시간</span>
+            </div>
+            <span class="stat-value time-value" id="elapsed-time">--:--</span>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="action-btn" id="btn-replay">다시 연습</button>
+          <button class="action-btn primary" id="btn-home">홈으로</button>
+        </div>
+      </aside>
+
+      <!-- 우측: 분석 -->
+      <section class="detail-panel">
+
+        <!-- 박자 분포 -->
+        <div class="timing-breakdown">
+          <h4 class="breakdown-title">박자 분포</h4>
+          <div class="timing-row">
+            <span class="timing-label">정확</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill correct" id="tbar-correct" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-correct">0</span>
+          </div>
+          <div class="timing-row">
+            <span class="timing-label">빠름</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill fast" id="tbar-fast" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-fast">0</span>
+          </div>
+          <div class="timing-row">
+            <span class="timing-label">느림</span>
+            <div class="timing-bar-track">
+              <div class="timing-bar-fill slow" id="tbar-slow" style="width:0%"></div>
+            </div>
+            <span class="timing-count" id="tcnt-slow">0</span>
+          </div>
+        </div>
+
+        <!-- 오답 리스트 -->
+        <header class="detail-header">
+          <h3>틀린 음 분석</h3>
+          <span class="error-count-badge" id="error-count-badge">0마디</span>
+        </header>
+
+        <ul class="error-list" id="error-list">
+          <li class="error-empty">완벽해요! 틀린 음이 없습니다 🎉</li>
+        </ul>
+
+        <!-- AI 분석 카드 -->
+        <div class="ai-card">
+          <div class="ai-card-header">
+            <h4>AI 연주 분석</h4>
+            <span class="ai-badge">AI</span>
+          </div>
+          <div id="ai-content">
+            <div class="ai-loading">
+              <div class="spinner"></div>
+              <span>분석 중...</span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="js/result.js"></script>
+</body>
+</html>

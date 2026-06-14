@@ -1,0 +1,9 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "backend/**",
+    "sheet_parser/**",
+    ".git/**"
+  ],
+  "liveServer.settings.root": "/frontend",
+  "liveServer.settings.file": "home.html"
+}

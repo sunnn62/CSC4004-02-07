@@ -1,0 +1,323 @@
+:root {
+  --bg-main: #F5F1E8;
+  --bg-card: #FFFFFF;
+  --bg-active: #E5DFD0;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --text-primary: #1A1A1A;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --text-on-dark: #FFFFFF;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --sidebar-w: 220px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Serif KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main {
+  flex: 1;
+  padding: 24px 36px 40px;
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+/* ───── 뒤로 가기 ───── */
+.back-link {
+  display: inline-block;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+  margin-bottom: 16px;
+  transition: color 0.15s;
+}
+.back-link:hover { color: var(--text-primary); }
+
+/* ───── 곡 헤더 ───── */
+.detail-header {
+  margin-bottom: 20px;
+}
+.title-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.song-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+.title-edit-btn {
+  background: none; border: none;
+  font-size: 16px; cursor: pointer;
+  padding: 2px 4px; border-radius: 6px;
+  opacity: 0.4; transition: opacity .15s;
+  line-height: 1;
+}
+.title-edit-btn:hover { opacity: 1; }
+
+.title-edit-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.title-input {
+  flex: 1;
+  font-size: 18px; font-weight: 600;
+  font-family: inherit;
+  padding: 6px 12px;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  outline: none;
+  max-width: 360px;
+}
+.title-save-btn, .title-cancel-btn {
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  border: none; font-family: inherit;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.title-save-btn {
+  background: var(--text-primary); color: white;
+}
+.title-save-btn:disabled { opacity: .5; cursor: default; }
+.title-cancel-btn {
+  background: var(--bg-hover); color: var(--text-secondary);
+}
+.title-cancel-btn:hover { background: var(--bg-active); }
+
+.song-composer {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ───── 곡 정보 카드 ───── */
+.info-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.info-item { display: flex; flex-direction: column; gap: 4px; }
+.info-label { font-size: 12px; color: var(--text-secondary); }
+.info-value { font-size: 15px; font-weight: 600; }
+
+/* ───── 섹션 타이틀 ───── */
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* ───── 설정 카드 ───── */
+.settings-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 8px 24px;
+  margin-bottom: 24px;
+}
+.setting-row {
+  display: flex;
+  align-items: center;
+  padding: 18px 0;
+  gap: 24px;
+}
+.setting-label {
+  width: 80px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+.setting-control {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+/* ───── 카운터 (−/+) ───── */
+.counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-main);
+  border-radius: 999px;
+  padding: 4px;
+}
+.counter-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-card);
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.counter-btn:hover { background: var(--bg-active); }
+.counter-btn:active { transform: scale(0.94); }
+.counter-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.counter-value {
+  min-width: 64px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+/* ───── 템포 슬라이더 ───── */
+.tempo-control {
+  flex-wrap: wrap;
+}
+.slider {
+  flex: 1;
+  min-width: 200px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--bg-active);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--text-primary);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+.tempo-note {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ───── 토글 그룹 (손) ───── */
+.toggle-group {
+  display: inline-flex;
+  background: var(--bg-main);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 2px;
+}
+.toggle-btn {
+  border: none;
+  background: transparent;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: inherit;
+}
+.toggle-btn:hover { color: var(--text-primary); }
+.toggle-btn.active {
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+}
+
+/* ───── 연주 시작 버튼 ───── */
+.start-btn {
+  width: 100%;
+  padding: 16px;
+  background: var(--text-primary);
+  color: var(--text-on-dark);
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.start-btn:hover { opacity: 0.92; }
+.start-btn:active { transform: translateY(1px); }
+
+/* ───── 악보 미리보기 ───── */
+.preview-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  margin-bottom: 20px;
+}
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.preview-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.preview-note {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.preview-osmd {
+  min-height: 140px;
+  position: relative;
+  overflow: hidden;
+}
+.preview-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+/* OSMD가 그린 SVG 폭 제한 */
+.preview-osmd svg {
+  max-width: 100%;
+  height: auto !important;
+}

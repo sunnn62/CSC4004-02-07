@@ -1,0 +1,26 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ===== 백엔드 런타임 산출물 (폴더는 .gitkeep으로 유지) =====
+backend/uploads/*
+backend/scores/*
+backend/results/*
+!backend/uploads/.gitkeep
+!backend/scores/.gitkeep
+!backend/results/.gitkeep
+
+# ===== sheet_parser 작업/캐시 산출물 =====
+sheet_parser/score_work/
+sheet_parser/processed_pages/
+sheet_parser/service_data/
+sheet_parser/poppler/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+.env
+backend/.env

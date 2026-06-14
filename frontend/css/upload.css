@@ -1,0 +1,144 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-main: #F5F1E8;
+  --bg-card: #FFFFFF;
+  --bg-active: #E5DFD0;
+  --bg-hover: rgba(0,0,0,0.04);
+  --text-primary: #1A1A1A;
+  --text-secondary: #666666;
+  --text-hint: #999999;
+  --accent-green: #2D9D4E;
+  --button-primary: #1A1A1A;
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --sidebar-w: 220px;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Noto Serif KR', -apple-system, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+button { font-family: inherit; }
+
+/* === 가로 강제 안내 === */
+.rotate-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: var(--bg-main);
+  z-index: 9999;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 20px; font-size: 16px;
+}
+.rotate-icon {
+  font-size: 80px;
+  animation: spin 2.5s ease-in-out infinite;
+}
+@keyframes spin {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-90deg); }
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  .rotate-overlay { display: flex; }
+}
+
+/* === 앱 전체 레이아웃 === */
+.app {
+  display: flex;
+  height: 100vh;
+  padding: 16px;
+  gap: 16px;
+}
+
+/* === 메인 영역 === */
+.main {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: 20px 32px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.main-header {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.back-btn {
+  width: 36px; height: 36px;
+  border: 1px solid #E5E5E5;
+  background: white;
+  border-radius: 50%;
+  font-size: 18px; cursor: pointer;
+}
+.back-btn:hover { background: var(--bg-hover); }
+.section-title {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.content {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+}
+.title { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+.subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%; max-width: 700px;
+}
+.method-card {
+  background: var(--bg-main);
+  border: 2px dashed #D5CFC0;
+  border-radius: var(--radius-lg);
+  padding: 24px 16px;
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  transition: all 0.2s;
+}
+.method-card:hover {
+  border-color: var(--button-primary);
+  background: white;
+  transform: translateY(-2px);
+}
+.method-card:disabled { opacity: 0.5; cursor: not-allowed; }
+.method-icon {
+  width: 56px; height: 56px;
+  background: white;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+.method-label { font-weight: 700; font-size: 15px; }
+.method-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* === 상태 메시지 === */
+.status {
+  margin-top: 24px;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  max-width: 500px;
+}
+.status:empty { display: none; }
+.status-info    { background: #E7F3FE; color: #1c5ca8; }
+.status-loading { background: #FFF8E1; color: #8B6914; }
+.status-success { background: #E6F4EA; color: #1E7E34; }
+.status-error   { background: #FBEAEA; color: #B02A37; }

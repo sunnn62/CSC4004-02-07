@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#F5F1E8">
+  <title>피아니 - 악보 추가</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/sidebar.css">
+  <link rel="stylesheet" href="css/upload.css">
+</head>
+
+<body>
+  <!-- 세로 모드일 때 가로로 돌리라는 안내 -->
+  <div class="rotate-overlay">
+    <div class="rotate-icon">⟳</div>
+    <p>화면을 가로로 돌려주세요</p>
+  </div>
+
+  <div class="app">
+    <div id="sidebar-container"></div>
+
+    <!-- 메인 영역 -->
+    <main class="main">
+      <header class="main-header">
+        <button class="back-btn" onclick="history.back()">‹</button>
+        <h2 class="section-title">악보 추가</h2>
+        <div></div>
+      </header>
+
+      <div class="content">
+        <h1 class="title">연주할 악보를 가져와 주세요</h1>
+        <p class="subtitle">이미지나 PDF를 인식해서 음표를 자동으로 분석해 드려요.</p>
+
+        <div class="method-grid">
+          <button class="method-card" data-method="library">
+            <div class="method-icon">🖼️</div>
+            <div class="method-label">사진 라이브러리</div>
+            <div class="method-hint">갤러리에서 사진을 선택해요</div>
+          </button>
+
+          <button class="method-card" data-method="pdf">
+            <div class="method-icon">📄</div>
+            <div class="method-label">PDF 파일</div>
+            <div class="method-hint">파일에서 PDF를 불러와요</div>
+          </button>
+
+          <button class="method-card" data-method="musicxml">
+            <div class="method-icon">🎼</div>
+            <div class="method-label">MusicXML 파일</div>
+            <div class="method-hint">.xml / .musicxml / .mxl 형식</div>
+          </button>
+        </div>
+
+        <!-- 숨겨진 input들 -->
+        <input type="file" id="file-library"  accept="image/*"             hidden>
+        <input type="file" id="file-pdf"      accept=".pdf"                hidden>
+        <input type="file" id="file-musicxml" accept=".xml,.musicxml,.mxl" hidden>
+
+        <div id="status" class="status"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/upload.js"></script>
+
+  <script type="module">
+  import { renderSidebar } from './js/sidebar.js';
+  renderSidebar('practice');   // 업로드는 "연습" 메뉴 활성화
+  </script>
+</body>
+</html>
