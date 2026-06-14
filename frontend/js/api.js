@@ -6,7 +6,7 @@
 // ============================================================
 
 var USE_MOCK = false;
-var API_BASE = "http://localhost:8001";
+var API_BASE = "https://csc4004-02-07-production.up.railway.app";
 
 var api = {
   // === 악보 업로드 ===

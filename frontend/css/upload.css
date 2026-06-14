@@ -93,6 +93,19 @@ button { font-family: inherit; }
 .title { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
 .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
 
+.upload-notice {
+  background: #FFF8E7;
+  border: 1px solid #E8D9A0;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 13px;
+  color: #7A6B3A;
+  line-height: 1.6;
+  text-align: center;
+  width: 100%; max-width: 700px;
+  margin-bottom: 4px;
+}
+
 .method-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -113,7 +126,14 @@ button { font-family: inherit; }
   background: white;
   transform: translateY(-2px);
 }
-.method-card:disabled { opacity: 0.5; cursor: not-allowed; }
+.method-card:disabled,
+.method-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  border-color: #D5CFC0 !important;
+  background: var(--bg-main) !important;
+}
 .method-icon {
   width: 56px; height: 56px;
   background: white;

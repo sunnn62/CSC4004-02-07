@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-multipart
+groq
+python-dotenv
+music21>=9.0
+pdf2image>=1.17
+Pillow>=10.0

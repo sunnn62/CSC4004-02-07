@@ -127,7 +127,7 @@ document.getElementById('btn-home').addEventListener('click', () => {
 });
 
 // ── AI 분석 ──────────────────────────────────────────────
-const API_BASE = 'http://localhost:8001';
+const API_BASE = 'https://csc4004-02-07-production.up.railway.app';
 
 function buildErrorMeasures(errorLog) {
   const map = new Map();

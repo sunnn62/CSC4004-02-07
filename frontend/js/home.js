@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8001";
+const API_BASE = "https://csc4004-02-07-production.up.railway.app";
 
 let cachedScores = [];
 let isEditMode = false;
