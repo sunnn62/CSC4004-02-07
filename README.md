@@ -1,5 +1,4 @@
-# 피AI노 <img width="1254" height="1254" alt="logo" src="https://github.com/user-attachments/assets/e1fde06e-747a-448f-aec1-6620e1beca40" />
-
+# 피AI노 <img src="https://github.com/user-attachments/assets/e1fde06e-747a-448f-aec1-6620e1beca40" width="40" align="center" />
 
 > MusicXML 악보를 업로드하고, 피아노를 연주하면 AI가 실시간으로 피드백을 드립니다.
 
