@@ -27,6 +27,8 @@
 **Backend**
 - FastAPI (Python)
 - music21 — MusicXML 파싱
+- Oemer — 이미지/PDF 악보 OMR 인식
+- Audiveris — PDF 악보 OMR 인식 (Oemer 폴백)
 - Groq API (LLaMA 3.1) — AI 연주 분석
 
 **배포**
