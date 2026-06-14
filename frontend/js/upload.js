@@ -74,7 +74,7 @@ async function waitUntilDone(scoreId) {
 }
 
 function setCardsDisabled(disabled) {
-  document.querySelectorAll(".method-card").forEach((c) => {
+  document.querySelectorAll(".method-card:not(.disabled)").forEach((c) => {
     c.disabled = disabled;
     c.style.opacity = disabled ? "0.5" : "";
     c.style.pointerEvents = disabled ? "none" : "";
