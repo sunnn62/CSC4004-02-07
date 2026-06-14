@@ -2,10 +2,6 @@
 
 > MusicXML 악보를 업로드하고, 피아노를 연주하면 AI가 실시간으로 피드백을 드립니다.
 
-## 데모
-
-**→ https://funny-cat-bd2aed.netlify.app**
-
 ---
 
 ## 주요 기능
