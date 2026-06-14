@@ -40,7 +40,7 @@ os.makedirs(SCORES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 IMAGE_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
-XML_EXTENSIONS = {"xml", "mxl"}
+XML_EXTENSIONS = {"xml", "mxl", "musicxml"}
 ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS | XML_EXTENSIONS
 
 PIPELINE_SCRIPT = Path(__file__).parent.parent / "sheet_parser" / "score_pipeline.py"
